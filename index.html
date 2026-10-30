@@ -405,13 +405,14 @@
 
   /* ===== Responsive Celulares Medianos y Pequeños ===== */
   @media (max-width:640px){
-    #mapa-topbar{ padding:6px 8px; gap:5px; }
-    #mapa-topbar .titulo{ font-size:13px; width:100%; margin-right:0; margin-bottom:1px; }
-    #mapa-topbar .topbar-row{ width:100%; gap:4px; display:flex; align-items:center; }
-    #mapa-topbar select{ padding:6px 6px; font-size:12px; max-width:98px; flex:0 0 auto; }
-    .search-box-wrap{ flex:1 1 auto; min-width:0; }
-    #mapa-topbar input{ padding:6px 8px; font-size:13px; width:100%; min-width:0; }
-    #buscar-btn{ padding:6px 10px; font-size:12px; flex:0 0 auto; }
+    #mapa-topbar{ padding:8px 10px 10px; gap:6px; justify-content:center; }
+    #mapa-topbar .titulo{ font-size:14px; width:100%; margin-right:0; margin-bottom:1px; justify-content:center; text-align:center; }
+    /* Buscador grande y centrado: el input ocupa su propia fila completa; comuna y botón debajo */
+    #mapa-topbar .topbar-row{ width:100%; gap:6px; display:flex; align-items:center; flex-wrap:wrap; justify-content:center; }
+    .search-box-wrap{ order:-1; flex:1 1 100%; min-width:0; max-width:none; }
+    #mapa-topbar input{ padding:12px 14px; font-size:16px; width:100%; min-width:0; border-radius:12px; }
+    #mapa-topbar select{ padding:9px 8px; font-size:14px; max-width:none; flex:1 1 0; min-width:0; }
+    #buscar-btn{ padding:9px 12px; font-size:14px; flex:1 1 0; }
     .banner-bosquejo{ max-width:55vw; font-size:10px; padding:4px 7px; top:6px; right:6px; }
     #resultado{
       left:8px; right:8px; bottom:10px; transform:none;
@@ -424,9 +425,9 @@
   @media (max-width:360px){
     #mapa-topbar{ padding:4px 6px; }
     #mapa-topbar .titulo{ font-size:12px; }
-    #mapa-topbar select{ max-width:78px; font-size:11px; padding:5px 3px; }
-    #mapa-topbar input{ font-size:12px; padding:5px 6px; }
-    #buscar-btn{ padding:5px 7px; font-size:11px; }
+    #mapa-topbar select{ font-size:13px; padding:8px 5px; }
+    #mapa-topbar input{ font-size:16px; padding:11px 10px; }
+    #buscar-btn{ padding:8px 7px; font-size:13px; }
     #resultado{ left:5px; right:5px; bottom:6px; padding:7px 8px; font-size:11px; }
     .res-cuad-headline{ font-size:11.5px; }
     .res-chevron-bar{ padding:4px 6px; font-size:10.5px; }
