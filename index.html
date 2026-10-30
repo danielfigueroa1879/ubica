@@ -4,7 +4,7 @@
 <link rel="icon" href="data:,">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Cuadrantes O.S.10 — La Serena, Coquimbo, Vicuña, Paihuano y Andacollo</title>
+<title>Cuadrantes — La Serena, Coquimbo, Vicuña, Paihuano y Andacollo</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- Catálogo compartido de calles multi-comuna e hitos (fuente única, también usado por el buscador de index.html) -->
@@ -432,6 +432,59 @@
     .res-cuad-headline{ font-size:11.5px; }
     .res-chevron-bar{ padding:4px 6px; font-size:10.5px; }
   }
+  /* ===== Pantallas táctiles (celulares y tablets): controles más fáciles de tocar ===== */
+  @media (pointer:coarse){
+    .res-tel-btn, .popup-tel-btn{ padding:6px 11px; font-size:13px; }
+    .res-close-btn{ font-size:20px; padding:4px 8px; }
+    .res-action-btn{ padding:7px 10px; font-size:12px; }
+    .popup-corr-btn{ padding:8px 12px; font-size:12px; }
+    .res-chevron-bar, .popup-chevron-bar{ padding:8px 10px; }
+    .q-ac-item{ padding:12px 14px; }
+    .leaflet-container a.leaflet-popup-close-button{ font-size:22px; width:30px; height:30px; top:4px; right:4px; }
+  }
+
+  /* ===== Celulares: zonas seguras (notch / barra inferior) y paneles que no se salgan de la pantalla ===== */
+  @media (max-width:640px){
+    #mapa-topbar{ padding-top:max(8px, env(safe-area-inset-top)); padding-left:max(10px, env(safe-area-inset-left)); padding-right:max(10px, env(safe-area-inset-right)); }
+    #resultado{ bottom:calc(10px + env(safe-area-inset-bottom)); max-height:55vh; overflow-y:auto; }
+    .q-autocomplete-dropdown{ max-height:min(380px, 55vh); }
+    .leaflet-popup-content{ max-width:none; font-size:13px; }
+    .popup-dir-name{ font-size:13px; }
+    .popup-cuad-title{ font-size:14px; }
+    .popup-cuad-sector, .popup-tray-cuad{ font-size:12.5px; }
+    .popup-tray-sector, .popup-tray-tel{ font-size:11.5px; }
+    .popup-tray-list{ max-height:32vh; }
+    .leaflet-control-attribution{ font-size:9px; }
+  }
+
+  /* ===== Celulares en horizontal (poca altura): barra compacta en una sola fila ===== */
+  @media (max-height:500px) and (orientation:landscape){
+    #mapa-topbar{ padding:5px 12px; flex-wrap:nowrap; }
+    #mapa-topbar .titulo{ width:auto; font-size:14px; margin:0; flex:0 0 auto; }
+    #mapa-topbar .topbar-row{ flex:1 1 auto; flex-wrap:nowrap; width:auto; }
+    .search-box-wrap{ order:0; flex:1 1 auto; max-width:none; }
+    #mapa-topbar input{ padding:7px 12px; font-size:16px; }
+    #mapa-topbar select, #buscar-btn{ padding:7px 10px; font-size:13px; flex:0 0 auto; }
+    #mapa-topbar select{ max-width:130px; }
+    .q-autocomplete-dropdown{ max-height:60vh; }
+    #resultado{ max-height:60vh; overflow-y:auto; max-width:420px; }
+    .popup-tray-list, .res-alt-list{ max-height:28vh; }
+    .leaflet-popup-content{ margin:7px 11px !important; font-size:12px; }
+    .popup-unified-card{ gap:4px; }
+    .popup-cuad-box{ padding:5px 8px; }
+    .popup-corregir{ margin-top:3px; }
+  }
+
+  /* ===== Tablets (641px – 1024px) ===== */
+  @media (min-width:641px) and (max-width:1024px){
+    #mapa-topbar{ padding:10px 16px; gap:12px; }
+    #mapa-topbar .titulo{ font-size:17px; }
+    #mapa-topbar select, #mapa-topbar input, #buscar-btn{ padding:11px 14px; font-size:16px; }
+    .search-box-wrap{ min-width:240px; }
+    #resultado{ max-width:420px; font-size:13.5px; bottom:calc(24px + env(safe-area-inset-bottom)); }
+    .leaflet-popup-content{ font-size:13.5px; max-width:360px; }
+  }
+
   @media (min-width: 800px){
     #mapa-topbar{ justify-content: space-between; padding: 10px 22px; }
     #mapa-topbar .titulo{ margin-right: 0; flex: 0 0 auto; }
@@ -443,7 +496,7 @@
 <body>
   <div id="mapa-modal">
     <div id="mapa-topbar">
-      <span class="titulo">Cuadrantes O.S.10</span>
+      <span class="titulo">Cuadrantes</span>
       <div class="topbar-row">
         <select id="ciudad" aria-label="Seleccione Comuna">
           <option value="coquimbo">Coquimbo</option>
@@ -2083,7 +2136,7 @@ function comenzarArrastre(){
 function etiquetaPrecision(alt){
   var p = alt.precision, c = alt.calidad;
   if (p === 'corregida') return ['✅ Corregida por ti', '#15803d'];
-  if (p === 'equipo') return ['✅ Corregida en terreno (equipo OS10)', '#15803d'];
+  if (p === 'equipo') return ['✅ Corregida en terreno (equipo)', '#15803d'];
   if (c === 3) return ['✅ Verificada en terreno', '#15803d'];
   if (p === 'esquina') return ['✚ Esquina exacta', '#1d4ed8'];
   if (p === 'lugar') return ['🏢 Lugar encontrado', '#1d4ed8'];
@@ -2304,8 +2357,12 @@ function seleccionarAlternativa(idx, ev, keepTrayOpen){
   pin = L.marker([alt.lat, alt.lng]).addTo(map).bindPopup(popupHtml, {
     maxWidth: Math.min(340, window.innerWidth - 30),
     autoPan: true,
-    autoPanPadding: [20, 20]
+    // En celular se deja espacio arriba para que el popup no tape los botones de zoom
+    autoPanPaddingTopLeft: window.innerHeight < 500 ? [10, 6] : (window.innerWidth < 640 ? [10, 100] : [20, 20]),
+    autoPanPaddingBottomRight: [10, 20]
   }).openPopup();
+  // Re-ajusta el encuadre cuando el popup ya tiene su tamaño final (evita que quede cortado en pantallas bajas)
+  setTimeout(function(){ if (pin && pin.isPopupOpen()) pin.getPopup().update(); }, 250);
 
   if (items && items.length) {
     var hitItem = items.find(function(it){ return enItem(alt.lat, alt.lng, it); });
