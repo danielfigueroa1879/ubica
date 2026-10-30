@@ -39,6 +39,14 @@
     padding:7px 13px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; }
   #instalar-banner .accion[hidden]{ display:none; }
   #instalar-banner .cerrar{ position:absolute; top:4px; right:4px; border:none; background:transparent; font-size:20px; color:#6b7280; cursor:pointer; padding:4px 8px; }
+  #abrir-fuera{ position:fixed; inset:0; z-index:5000; display:flex; align-items:center; justify-content:center; padding:20px;
+    background:linear-gradient(135deg,var(--verde),var(--verde2)); color:#fff; text-align:center; }
+  #abrir-fuera[hidden]{ display:none; }
+  #abrir-fuera .caja{ max-width:340px; display:flex; flex-direction:column; align-items:center; gap:14px; font-size:15px; line-height:1.4; }
+  #abrir-fuera .logo{ width:72px; height:72px; border-radius:16px; box-shadow:0 4px 14px rgba(0,0,0,.3); }
+  #abrir-fuera .ir{ display:block; width:100%; background:#fff; color:#144a14; border-radius:999px; padding:13px 18px;
+    font-size:16px; font-weight:800; text-decoration:none; box-shadow:0 4px 14px rgba(0,0,0,.25); }
+  #abrir-fuera .quedarse{ border:none; background:transparent; color:rgba(255,255,255,.85); text-decoration:underline; font-size:13px; cursor:pointer; font-family:inherit; }
   #mapa-topbar .topbar-row{ display:flex; align-items:center; gap:9px; min-width:0; flex-wrap:nowrap; }
   #mapa-topbar select, #mapa-topbar input{ border:none; border-radius:9px; padding:9px 12px; font-size:14px; outline:none; }
   #mapa-topbar select{ flex:0 0 auto; font-weight:700; color:#144a14; background:#f0fdf4; cursor:pointer; }
@@ -3328,6 +3336,46 @@ setTimeout(function(){ map.invalidateSize(); },80);
       bajar('<b>Instala la app:</b> toca <b>Compartir</b> <span aria-hidden="true">⬆️</span> y luego <b>"Agregar a pantalla de inicio"</b>.', false);
     }, 800);
   }
+})();
+</script>
+<div id="abrir-fuera" hidden>
+  <div class="caja">
+    <img class="logo" src="assets/icons/logo.png" alt="" width="72" height="72">
+    <b style="font-size:19px">Cuadrantes</b>
+    <span>Para usar el mapa completo, ábrelo en Chrome o en la app instalada.</span>
+    <a class="ir" target="_top" rel="noopener">Abrir Cuadrantes</a>
+    <button type="button" class="quedarse">Seguir aquí</button>
+  </div>
+</div>
+<script>
+// ===== Si llega por un acortador (página dentro de un marco) o por el navegador interno
+// de otra app (WhatsApp, Instagram, Facebook...), se abre en Chrome o en la app instalada =====
+(function(){
+  var url = location.href;
+  var enMarco = false; try { enMarco = window.top !== window.self; } catch(e){ enMarco = true; }
+  var ua = navigator.userAgent;
+  var android = /android/i.test(ua);
+  var appInterna = /; wv\)|FBAN|FBAV|FB_IAB|Instagram|Line\/|WhatsApp|Twitter|TikTok|musical_ly|Snapchat|Telegram/i.test(ua);
+  if (!enMarco && !(android && appInterna)) return;
+
+  // En Android, el enlace "intent" abre Chrome; si la app está instalada, Chrome la abre a ella.
+  var destino = android
+    ? 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=' + location.protocol.replace(':', '') +
+      ';package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end'
+    : url;
+  if (location.protocol === 'file:') destino = url;
+
+  var aviso = document.getElementById('abrir-fuera');
+  var ir = aviso.querySelector('.ir');
+  ir.href = destino;
+  aviso.querySelector('.quedarse').addEventListener('click', function(){ aviso.hidden = true; });
+
+  // Intento automático; si el navegador lo bloquea, queda el botón para hacerlo con un toque
+  try {
+    if (enMarco) window.top.location.href = destino;
+    else location.href = destino;
+  } catch(e){}
+  setTimeout(function(){ if (!document.hidden) aviso.hidden = false; }, 700);
 })();
 </script>
 </body>
