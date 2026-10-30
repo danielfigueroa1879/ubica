@@ -27,14 +27,18 @@
     display:flex; align-items:center; gap:10px; flex-wrap:wrap; box-shadow:0 2px 10px rgba(0,0,0,.25); }
   #mapa-topbar .titulo{ font-weight:800; font-size:16px; margin-right:auto; display:flex; align-items:center; gap:8px; }
   #mapa-topbar .titulo .logo{ width:26px; height:26px; border-radius:7px; flex:0 0 auto; box-shadow:0 1px 4px rgba(0,0,0,.3); }
-  #instalar-btn{ margin-left:6px; border:1.5px solid rgba(255,255,255,.75); background:rgba(255,255,255,.14); color:#fff; border-radius:999px;
-    padding:4px 11px; font-size:12px; font-weight:800; cursor:pointer; font-family:inherit; }
-  #instalar-btn:hover{ background:rgba(255,255,255,.26); }
-  #instalar-btn[hidden]{ display:none; }
-  #ios-tip{ position:fixed; z-index:3000; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom));
-    width:min(420px, calc(100% - 24px)); background:#fff; color:#1f2937; border-radius:14px; padding:12px 38px 12px 14px;
-    box-shadow:0 12px 32px rgba(0,0,0,.3); font-size:13.5px; line-height:1.4; border-left:5px solid var(--verde); }
-  #ios-tip button{ position:absolute; top:6px; right:6px; border:none; background:transparent; font-size:20px; color:#6b7280; cursor:pointer; padding:4px 8px; }
+  #instalar-banner{ position:fixed; z-index:4000; left:50%; top:0; width:min(460px, calc(100% - 20px));
+    transform:translate(-50%, calc(-100% - 20px)); transition:transform .45s cubic-bezier(.2,.8,.2,1);
+    margin-top:calc(8px + env(safe-area-inset-top)); display:flex; align-items:center; gap:10px;
+    background:#fff; color:#1f2937; border-radius:14px; padding:10px 34px 10px 12px; border-left:5px solid var(--verde);
+    box-shadow:0 12px 32px rgba(0,0,0,.3); font-size:13.5px; line-height:1.35; }
+  #instalar-banner.visible{ transform:translate(-50%, 0); }
+  #instalar-banner .logo{ width:34px; height:34px; border-radius:8px; flex:0 0 auto; }
+  #instalar-banner .txt{ flex:1 1 auto; min-width:0; }
+  #instalar-banner .accion{ flex:0 0 auto; border:none; background:var(--verde); color:#fff; border-radius:999px;
+    padding:7px 13px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; }
+  #instalar-banner .accion[hidden]{ display:none; }
+  #instalar-banner .cerrar{ position:absolute; top:4px; right:4px; border:none; background:transparent; font-size:20px; color:#6b7280; cursor:pointer; padding:4px 8px; }
   #mapa-topbar .topbar-row{ display:flex; align-items:center; gap:9px; min-width:0; flex-wrap:nowrap; }
   #mapa-topbar select, #mapa-topbar input{ border:none; border-radius:9px; padding:9px 12px; font-size:14px; outline:none; }
   #mapa-topbar select{ flex:0 0 auto; font-weight:700; color:#144a14; background:#f0fdf4; cursor:pointer; }
@@ -512,7 +516,7 @@
 <body>
   <div id="mapa-modal">
     <div id="mapa-topbar">
-      <span class="titulo"><img class="logo" src="assets/icons/logo.png" alt="" width="26" height="26">Cuadrantes<button id="instalar-btn" type="button" hidden>📲 Instalar</button></span>
+      <span class="titulo"><img class="logo" src="assets/icons/logo.png" alt="" width="26" height="26">Cuadrantes</span>
       <div class="topbar-row">
         <select id="ciudad" aria-label="Seleccione Comuna">
           <option value="coquimbo">Coquimbo</option>
@@ -3270,9 +3274,11 @@ setTimeout(function(){ map.invalidateSize(); },80);
   }
 })();
 </script>
-<div id="ios-tip" hidden>
-  <b>Instala la app:</b> toca <b>Compartir</b> <span aria-hidden="true">⬆️</span> y luego <b>"Agregar a pantalla de inicio"</b>.
-  <button type="button" aria-label="Cerrar">×</button>
+<div id="instalar-banner" role="status" aria-hidden="true">
+  <img class="logo" src="assets/icons/logo.png" alt="" width="34" height="34">
+  <div class="txt"></div>
+  <button type="button" class="accion" hidden>📲 Instalar</button>
+  <button type="button" class="cerrar" aria-label="Cerrar">×</button>
 </div>
 <script>
 // ===== App instalable (PWA) =====
@@ -3281,30 +3287,47 @@ setTimeout(function(){ map.invalidateSize(); },80);
     window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
   }
   var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  var btn = document.getElementById('instalar-btn');
-  var promptEvt = null;
+  var banner = document.getElementById('instalar-banner');
+  var txt = banner.querySelector('.txt');
+  var accion = banner.querySelector('.accion');
+  var promptEvt = null, timer = null, mostrado = false;
 
-  // Android / Chrome / Edge: botón "Instalar" cuando el navegador lo permite
+  // Banner que baja al abrir la app y vuelve a subir a los 5 segundos
+  function bajar(html, conBoton){
+    if (standalone || mostrado) return;
+    mostrado = true;
+    txt.innerHTML = html; accion.hidden = !conBoton;
+    banner.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(function(){ banner.classList.add('visible'); });
+    timer = setTimeout(subir, 5000);
+  }
+  function subir(){
+    clearTimeout(timer);
+    banner.classList.remove('visible');
+    banner.setAttribute('aria-hidden', 'true');
+  }
+
+  // Android / Chrome / Edge: el navegador permite instalar con un toque
   window.addEventListener('beforeinstallprompt', function(e){
-    e.preventDefault(); promptEvt = e; btn.hidden = false;
+    e.preventDefault(); promptEvt = e;
+    bajar('<b>Instala Cuadrantes</b> en tu teléfono para abrirla más rápido.', true);
   });
-  btn.addEventListener('click', function(){
+  accion.addEventListener('click', function(){
+    subir();
     if (!promptEvt) return;
     promptEvt.prompt();
-    promptEvt.userChoice.finally(function(){ promptEvt = null; btn.hidden = true; });
+    promptEvt.userChoice.finally(function(){ promptEvt = null; });
   });
-  window.addEventListener('appinstalled', function(){ btn.hidden = true; });
+  window.addEventListener('appinstalled', subir);
+  banner.querySelector('.cerrar').addEventListener('click', subir);
 
-  // iPhone / iPad (Safari no tiene botón de instalar): se muestra la instrucción una vez
+  // iPhone / iPad (Safari no tiene botón de instalar): se muestra la instrucción
   var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  var tip = document.getElementById('ios-tip');
-  var visto = false; try { visto = localStorage.getItem('ios_tip_visto') === '1'; } catch(e){}
-  if (ios && !standalone && !visto) {
-    setTimeout(function(){ tip.hidden = false; }, 2500);
+  if (ios) {
+    setTimeout(function(){
+      bajar('<b>Instala la app:</b> toca <b>Compartir</b> <span aria-hidden="true">⬆️</span> y luego <b>"Agregar a pantalla de inicio"</b>.', false);
+    }, 800);
   }
-  tip.querySelector('button').addEventListener('click', function(){
-    tip.hidden = true; try { localStorage.setItem('ios_tip_visto', '1'); } catch(e){}
-  });
 })();
 </script>
 </body>
