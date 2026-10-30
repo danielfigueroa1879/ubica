@@ -1,7 +1,14 @@
 <!doctype html>
 <html lang="es">
 <head>
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#146314">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cuadrantes">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Cuadrantes — La Serena, Coquimbo, Vicuña, Paihuano y Andacollo</title>
@@ -19,6 +26,15 @@
   #mapa-topbar{ position:relative; z-index:2500; background:linear-gradient(135deg,var(--verde),var(--verde2)); color:#fff; padding:10px 14px;
     display:flex; align-items:center; gap:10px; flex-wrap:wrap; box-shadow:0 2px 10px rgba(0,0,0,.25); }
   #mapa-topbar .titulo{ font-weight:800; font-size:16px; margin-right:auto; display:flex; align-items:center; gap:8px; }
+  #mapa-topbar .titulo .logo{ width:26px; height:26px; border-radius:7px; flex:0 0 auto; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  #instalar-btn{ margin-left:6px; border:1.5px solid rgba(255,255,255,.75); background:rgba(255,255,255,.14); color:#fff; border-radius:999px;
+    padding:4px 11px; font-size:12px; font-weight:800; cursor:pointer; font-family:inherit; }
+  #instalar-btn:hover{ background:rgba(255,255,255,.26); }
+  #instalar-btn[hidden]{ display:none; }
+  #ios-tip{ position:fixed; z-index:3000; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom));
+    width:min(420px, calc(100% - 24px)); background:#fff; color:#1f2937; border-radius:14px; padding:12px 38px 12px 14px;
+    box-shadow:0 12px 32px rgba(0,0,0,.3); font-size:13.5px; line-height:1.4; border-left:5px solid var(--verde); }
+  #ios-tip button{ position:absolute; top:6px; right:6px; border:none; background:transparent; font-size:20px; color:#6b7280; cursor:pointer; padding:4px 8px; }
   #mapa-topbar .topbar-row{ display:flex; align-items:center; gap:9px; min-width:0; flex-wrap:nowrap; }
   #mapa-topbar select, #mapa-topbar input{ border:none; border-radius:9px; padding:9px 12px; font-size:14px; outline:none; }
   #mapa-topbar select{ flex:0 0 auto; font-weight:700; color:#144a14; background:#f0fdf4; cursor:pointer; }
@@ -496,7 +512,7 @@
 <body>
   <div id="mapa-modal">
     <div id="mapa-topbar">
-      <span class="titulo">Cuadrantes</span>
+      <span class="titulo"><img class="logo" src="assets/icons/logo.png" alt="" width="26" height="26">Cuadrantes<button id="instalar-btn" type="button" hidden>📲 Instalar</button></span>
       <div class="topbar-row">
         <select id="ciudad" aria-label="Seleccione Comuna">
           <option value="coquimbo">Coquimbo</option>
@@ -3252,6 +3268,43 @@ setTimeout(function(){ map.invalidateSize(); },80);
   } catch (err) {
     console.warn('Error procesando parámetros URL:', err);
   }
+})();
+</script>
+<div id="ios-tip" hidden>
+  <b>Instala la app:</b> toca <b>Compartir</b> <span aria-hidden="true">⬆️</span> y luego <b>"Agregar a pantalla de inicio"</b>.
+  <button type="button" aria-label="Cerrar">×</button>
+</div>
+<script>
+// ===== App instalable (PWA) =====
+(function(){
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  var btn = document.getElementById('instalar-btn');
+  var promptEvt = null;
+
+  // Android / Chrome / Edge: botón "Instalar" cuando el navegador lo permite
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault(); promptEvt = e; btn.hidden = false;
+  });
+  btn.addEventListener('click', function(){
+    if (!promptEvt) return;
+    promptEvt.prompt();
+    promptEvt.userChoice.finally(function(){ promptEvt = null; btn.hidden = true; });
+  });
+  window.addEventListener('appinstalled', function(){ btn.hidden = true; });
+
+  // iPhone / iPad (Safari no tiene botón de instalar): se muestra la instrucción una vez
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var tip = document.getElementById('ios-tip');
+  var visto = false; try { visto = localStorage.getItem('ios_tip_visto') === '1'; } catch(e){}
+  if (ios && !standalone && !visto) {
+    setTimeout(function(){ tip.hidden = false; }, 2500);
+  }
+  tip.querySelector('button').addEventListener('click', function(){
+    tip.hidden = true; try { localStorage.setItem('ios_tip_visto', '1'); } catch(e){}
+  });
 })();
 </script>
 </body>
