@@ -1,0 +1,3200 @@
+<!doctype html>
+<html lang="es">
+<head>
+<link rel="icon" href="data:,">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Cuadrantes O.S.10 — La Serena, Coquimbo, Vicuña, Paihuano y Andacollo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- Catálogo compartido de calles multi-comuna e hitos (fuente única, también usado por el buscador de index.html) -->
+<script src="assets/js/cuadrantes-catalogo.js?v=3"></script>
+<!-- Base completa de calles/pasajes/avenidas/rutas de las 5 comunas (OSM), asignadas a cuadrantes. -->
+<script src="assets/js/calles-db.js?v=1" defer></script>
+<script src="assets/js/direcciones-osm.js?v=202610222220" defer></script>
+<style>
+  :root{ --verde:#146314; --verde2:#0d4a0d; --verde-claro:#16a34a; --azul:#1d4ed8; }
+  *{ box-sizing:border-box; } html,body{ margin:0; height:100%; font-family:'Segoe UI',system-ui,Arial,sans-serif; }
+  #mapa-modal{ position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; background:#fff; }
+  #mapa-topbar{ position:relative; z-index:2500; background:linear-gradient(135deg,var(--verde),var(--verde2)); color:#fff; padding:10px 14px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+  #mapa-topbar .titulo{ font-weight:800; font-size:16px; margin-right:auto; display:flex; align-items:center; gap:8px; }
+  #mapa-topbar .topbar-row{ display:flex; align-items:center; gap:9px; min-width:0; flex-wrap:nowrap; }
+  #mapa-topbar select, #mapa-topbar input{ border:none; border-radius:9px; padding:9px 12px; font-size:14px; outline:none; }
+  #mapa-topbar select{ flex:0 0 auto; font-weight:700; color:#144a14; background:#f0fdf4; cursor:pointer; }
+  .search-box-wrap{ position:relative; flex:1 1 auto; min-width:210px; max-width:390px; }
+  #mapa-topbar input{ width:100%; min-width:0; max-width:none; }
+  #mapa-topbar input:focus{ box-shadow:0 0 0 2px #ffd24a; }
+  .q-autocomplete-dropdown{
+    position:absolute; top:calc(100% + 6px); left:0; right:0; width:100%; min-width:100%; max-width:none; background:#ffffff;
+    border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.38), 0 2px 10px rgba(0,0,0,.15);
+    border:2px solid #16a34a; max-height:380px; overflow-y:auto; z-index:99999;
+    display:none; font-family:inherit; animation:fadeInDown .15s ease-out;
+  }
+  @keyframes fadeInDown{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
+  .q-ac-header{
+    padding:8px 12px 6px; font-size:11px; font-weight:800; text-transform:uppercase;
+    color:#6b7280; background:#f9fafb; border-bottom:1px solid #f3f4f6; letter-spacing:0.4px;
+  }
+  .q-ac-item{
+    padding:10px 12px; border-bottom:1px solid #f3f4f6; cursor:pointer;
+    transition:background .12s ease; display:flex; flex-direction:column; gap:3px; text-align:left;
+  }
+  .q-ac-item:last-child{ border-bottom:none; }
+  .q-ac-item:hover, .q-ac-item.active{ background:#f0fdf4; }
+  .q-ac-top{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .q-ac-badge{ font-size:10.5px; font-weight:800; text-transform:uppercase; padding:2px 7px; border-radius:999px; }
+  .q-ac-cuad{ font-size:13px; font-weight:700; color:#111827; }
+  .q-ac-action{ margin-left:auto; font-size:11.5px; font-weight:700; color:#16a34a; }
+  .q-ac-item:hover .q-ac-action{ text-decoration:underline; }
+  .q-ac-road{ font-size:12px; color:#4b5563; }
+  .q-ac-tel{ font-size:11.5px; font-weight:700; color:#166534; }
+  .popup-alt-box{ margin-top:9px; padding-top:7px; border-top:1px dashed #d1d5db; font-size:12px; }
+  .popup-alt-btn{ display:inline-flex; align-items:center; gap:4px; margin-top:4px; padding:6px 11px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; font-weight:800; color:#166534; text-decoration:none; cursor:pointer; font-size:12px; transition:all .15s; }
+  .popup-alt-btn:hover{ background:#dcfce7; border-color:#22c55e; transform:translateY(-1px); }
+  #buscar-btn{ background:#ffd24a; color:#5a3d00; border:none; border-radius:9px; padding:9px 14px; font-weight:700; cursor:pointer; flex:0 0 auto; transition:all .15s ease; }
+  #buscar-btn:hover{ background:#facc15; transform:translateY(-1px); }
+  #map{ position:absolute; inset:0; width:100%; height:100%; }
+  #resultado{
+    position:absolute; z-index:2000; left:20px; bottom:24px;
+    background:rgba(255,255,255,0.88);
+    backdrop-filter:blur(14px) saturate(170%);
+    -webkit-backdrop-filter:blur(14px) saturate(170%);
+    border:1px solid rgba(255,255,255,0.85);
+    border-left:5px solid var(--verde);
+    border-radius:14px; padding:10px 14px;
+    box-shadow:0 12px 30px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.08);
+    font-size:12.5px; max-width:390px; width:calc(100% - 40px); display:none;
+    transition:box-shadow .2s ease; user-select:text;
+  }
+  #resultado.is-dragging{
+    cursor:grabbing !important;
+    box-shadow:0 22px 50px rgba(0,0,0,.42), 0 6px 16px rgba(0,0,0,.18) !important;
+    user-select:none !important;
+  }
+  .res-drag-handle{
+    cursor:grab; color:#9ca3af; font-size:13px; line-height:1; padding:2px 4px;
+    user-select:none; border-radius:4px; margin-right:1px; flex:0 0 auto;
+    transition:color .15s, background .15s;
+  }
+  .res-drag-handle:hover{ color:#374151; background:rgba(0,0,0,.05); }
+  .res-title-row{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+  .res-title-row .res-icon{ font-size:15px; line-height:1; flex:0 0 auto; }
+  .res-title-row .res-title{ font-size:13px; font-weight:800; color:#111827; flex:1 1 auto; line-height:1.25; }
+  .res-close-btn{
+    background:transparent; border:none; color:#9ca3af; font-size:16px; cursor:pointer;
+    padding:0 4px; line-height:1; border-radius:6px; flex:0 0 auto;
+  }
+  .res-close-btn:hover{ color:#111827; background:rgba(0,0,0,.06); }
+
+  /* Bloque de Información Principal (Siempre visible y compacto) */
+  .res-main-info{
+    background:rgba(240,253,244,0.7);
+    border:1px solid rgba(187,247,208,0.85);
+    border-radius:10px; padding:7px 10px; margin-bottom:6px;
+  }
+  .res-cuad-headline{
+    font-size:13px; font-weight:800; color:#14532d;
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:3px;
+  }
+  .res-sector-text{ font-size:11.5px; color:#374151; line-height:1.3; margin-bottom:4px; }
+  .res-tel-row{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:#1f2937; margin-top:3px; }
+  .res-tel-btn{
+    display:inline-flex; align-items:center; gap:4px;
+    background:#15803d; color:#fff; font-weight:800; font-size:11.5px;
+    padding:3px 9px; border-radius:6px; text-decoration:none;
+    transition:background .15s ease;
+  }
+  .res-tel-btn:hover{ background:#166534; }
+
+  /* Barra interactiva con Chevron en V */
+  .res-chevron-bar{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:5px 9px; background:rgba(243,244,246,0.85);
+    border:1px solid #e5e7eb; border-radius:8px; cursor:pointer;
+    user-select:none; transition:background .15s ease, border-color .15s ease;
+  }
+  .res-chevron-bar:hover{ background:rgba(229,231,235,0.95); border-color:#d1d5db; }
+  .res-chevron-bar-content{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11.5px; font-weight:700; color:#374151; }
+  .res-chevron-badge{ font-size:10px; font-weight:800; padding:1px 6px; border-radius:999px; text-transform:uppercase; }
+  .res-chevron-v-btn{
+    background:transparent; border:none; padding:1px; display:inline-flex;
+    align-items:center; justify-content:center; color:#4b5563; cursor:pointer; flex:0 0 auto;
+  }
+  .res-chevron-svg{ display:block; transition:transform .25s ease; }
+
+  /* Bandeja desplegable que se abre hacia abajo */
+  .res-extra-tray{
+    margin-top:6px; padding-top:6px;
+    border-top:1px dashed rgba(209,213,219,0.85);
+    animation:traySlideDown .2s ease-out;
+  }
+  @keyframes traySlideDown{ from{ opacity:0; transform:translateY(-3px); } to{ opacity:1; transform:translateY(0); } }
+  .res-tray-title{ font-size:10.5px; font-weight:800; text-transform:uppercase; color:#6b7280; letter-spacing:0.3px; margin-bottom:5px; }
+  .res-alt-list{ display:flex; flex-direction:column; gap:5px; max-height:190px; overflow-y:auto; padding-right:2px; }
+  .res-alt-item{
+    background:rgba(255,255,255,0.95); border:1px solid #e5e7eb; border-radius:8px; padding:6px 9px;
+    cursor:pointer; transition:all .15s ease; text-align:left; font-family:inherit;
+  }
+  .res-alt-item:hover{ background:#f0fdf4; border-color:#86efac; transform:translateY(-1px); }
+  .res-alt-item.active{ background:#ecfdf5; border-color:#10b981; box-shadow:0 0 0 1.5px rgba(16,185,129,0.25); }
+  .res-alt-top{ display:flex; align-items:center; gap:6px; margin-bottom:2px; flex-wrap:wrap; }
+  .res-alt-badge{ font-size:10px; font-weight:800; text-transform:uppercase; padding:1.5px 6px; border-radius:999px; letter-spacing:0.3px; }
+  .badge-serena{ background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+  .badge-coquimbo{ background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+  .badge-vicuna{ background:#dcfce7; color:#166534; border:1px solid #86efac; }
+  .badge-paihuano{ background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; }
+  .badge-andacollo{ background:#ffedd5; color:#9a3412; border:1px solid #fdba74; }
+  .res-alt-cuad{ font-size:11.5px; color:#111827; }
+  .res-alt-action{ margin-left:auto; font-size:11px; font-weight:700; color:#15803d; }
+  .res-alt-item.active .res-alt-action{ color:#059669; font-weight:800; }
+  .res-alt-sector{ font-size:11px; color:#4b5563; line-height:1.25; }
+  .res-tray-actions{ display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .res-action-btn{
+    display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700;
+    padding:4px 8px; background:rgba(255,255,255,0.92); border:1px solid #d1d5db;
+    border-radius:6px; color:#374151; text-decoration:none; cursor:pointer; transition:all .15s ease;
+  }
+  .res-action-btn:hover{ background:#f3f4f6; border-color:#9ca3af; }
+  .res-action-133{ background:#fef2f2; border-color:#fca5a5; color:#b91c1c; }
+  .res-action-133:hover{ background:#fee2e2; }
+
+  .res-loading{ display:flex; align-items:center; font-weight:700; color:#166534; font-size:12.5px; }
+  .res-loading-spinner{
+    display:inline-block; width:16px; height:16px; border:2px solid #e5e7eb;
+    border-top-color:#16a34a; border-radius:50%; animation:spin .7s linear infinite;
+    vertical-align:middle; margin-right:8px; flex:0 0 auto;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .res-subtitle{ font-size:11.5px; color:#4b5563; margin-bottom:8px; line-height:1.3; }
+  .res-sugerencias{ margin-top:6px; padding:7px 10px; background:rgba(249,250,251,0.9); border:1px solid #e5e7eb; border-radius:8px; font-size:11.5px; color:#4b5563; }
+  .res-sugerencias ul{ margin:4px 0 0 14px; padding:0; }
+  .res-sugerencias li{ margin-bottom:2px; }
+  .tel-link{ color:var(--verde2); font-weight:800; text-decoration:none; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }
+  .tel-link:hover{ text-decoration:underline; }
+  /* Estilos del Popup de Leaflet (El cuadro que dice el cuadrante) */
+  .leaflet-popup-content-wrapper{
+    background: rgba(255, 255, 255, 0.94) !important;
+    backdrop-filter: blur(14px) saturate(170%);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    border-radius: 14px !important;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28), 0 3px 10px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.9) !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  .leaflet-popup-content{
+    margin: 11px 13px !important;
+    line-height: 1.4;
+    font-size: 12.5px;
+    color: #1f2937;
+    max-width: 320px;
+    width: auto;
+  }
+  .leaflet-popup-tip{
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  }
+  .leaflet-container a.leaflet-popup-close-button{
+    top: 8px; right: 8px; color: #9ca3af; font-size: 18px; padding: 2px;
+  }
+  .leaflet-container a.leaflet-popup-close-button:hover{
+    color: #111827;
+  }
+  .leaflet-popup-content .popup-title{ font-size: 14px; font-weight: 800; color: var(--verde2); margin-bottom: 3px; }
+  .leaflet-popup-content .popup-sector{ font-weight: 700; color: #1f2937; font-size: 12px; }
+  .leaflet-popup-content .popup-unidad{ font-size: 11.5px; color: #4b5563; margin-bottom: 4px; }
+  .leaflet-popup-content .tel-link{ display: inline-block; margin-top: 5px; padding: 6px 11px; background: #e8f5e8;
+    border: 1px solid #bfe3bf; border-radius: 7px; font-size: 12px; font-weight: 800; }
+  .leaflet-popup-content .doc-link{ display: inline-block; margin-top: 5px; font-size: 11.5px; color: #1d4ed8; font-weight: 700; text-decoration: none; }
+  .leaflet-popup-content .doc-link:hover{ text-decoration: underline; }
+
+  /* Cuadro unificado en el popup */
+  .popup-unified-card{ display: flex; flex-direction: column; gap: 7px; }
+  .popup-head-row{ display: flex; align-items: flex-start; gap: 6px; }
+  .popup-dir-icon{ font-size: 15px; line-height: 1.2; flex: 0 0 auto; margin-top: 1px; }
+  .popup-dir-text{ flex: 1 1 auto; min-width: 0; }
+  .popup-dir-label{ font-size: 10px; font-weight: 800; text-transform: uppercase; color: #6b7280; letter-spacing: 0.3px; }
+  .popup-dir-name{ font-size: 12px; font-weight: 800; color: #111827; line-height: 1.25; }
+  .popup-precision{ display:inline-block; margin-top:4px; padding:1px 7px; border:1px solid; border-radius:999px; font-size:10.5px; font-weight:800; background:#fff; }
+  .popup-nota{ margin-top:4px; font-size:11px; color:#4b5563; }
+  .popup-corregir{ margin-top:8px; display:flex; flex-direction:column; gap:5px; align-items:flex-start; }
+  .popup-corr-link{ font-size:11px; color:#6b7280; text-decoration:underline; }
+  .popup-corr-btn{ font-size:11px; font-weight:700; padding:5px 9px; border-radius:8px; border:1.5px solid #86efac; background:#f0fdf4; color:#166534; cursor:pointer; }
+
+  .popup-cuad-box{
+    background: rgba(240, 253, 244, 0.75);
+    border: 1px solid rgba(187, 247, 208, 0.85);
+    border-radius: 9px;
+    padding: 7px 9px;
+  }
+  .popup-cuad-top{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 3px;
+  }
+  .popup-cuad-title{ font-size: 13px; font-weight: 800; color: #14532d; }
+  .popup-cuad-sector{ font-size: 11.5px; color: #374151; margin-bottom: 4px; line-height: 1.3; }
+  .popup-cuad-tel-row{ display: flex; align-items: center; gap: 6px; font-size: 11.5px; }
+  .popup-tel-lbl{ color: #4b5563; font-weight: 600; font-size: 11px; }
+  .popup-tel-btn{
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #15803d;
+    color: #fff !important;
+    font-weight: 800;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background .15s ease;
+  }
+  .popup-tel-btn:hover{ background: #166534; }
+
+  /* Barra de Chevron V en el Popup */
+  .popup-chevron-bar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 5px 8px;
+    background: rgba(243, 244, 246, 0.9);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .popup-chevron-bar:hover{
+    background: rgba(229, 231, 235, 0.98);
+    border-color: #d1d5db;
+  }
+  .popup-chevron-label{
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #374151;
+    font-weight: 600;
+  }
+  .popup-chevron-btn{
+    background: transparent;
+    border: none;
+    padding: 1px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .popup-chevron-svg{ display: block; transition: transform .25s ease; }
+
+  /* Ventana semi-transparente desplegable con los otros cuadrantes */
+  .popup-semi-tray{
+    background: rgba(248, 250, 252, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-radius: 9px;
+    padding: 7px;
+    margin-top: 2px;
+    animation: traySlideDown .2s ease-out;
+  }
+  .popup-tray-subtitle{
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.3px;
+    margin-bottom: 5px;
+  }
+  .popup-tray-list{
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 175px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .popup-tray-item{
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .popup-tray-item:hover{
+    background: #f0fdf4;
+    border-color: #86efac;
+    transform: translateY(-1px);
+  }
+  .popup-tray-item-head{
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 2px;
+  }
+  .popup-tray-cuad{ font-size: 11px; color: #1e293b; }
+  .popup-tray-switch{
+    margin-left: auto;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #15803d;
+  }
+  .popup-tray-sector{ font-size: 10.5px; color: #64748b; line-height: 1.25; }
+  .popup-tray-tel{ font-size: 10.5px; font-weight: 700; color: #166534; margin-top: 2px; }
+
+  /* Etiquetas Generales */
+  .etq-cuad .caja{ background:rgba(20,99,20,.94); color:#fff; border:2px solid #fff; border-radius:10px; padding:3px 8px;
+    text-align:center; line-height:1.15; box-shadow:0 2px 6px rgba(0,0,0,.35); white-space:nowrap; font-family:'Segoe UI',sans-serif; }
+  .etq-cuad .num{ font-weight:800; font-size:13px; }
+  .etq-cuad .tel{ font-size:10.5px; font-weight:600; opacity:.95; }
+
+  /* La Serena - Tema Rojo con número amarillo */
+  .etq-cuad.etq-serena .caja{ background:rgba(220,38,38,.94); border:2px solid #fff; }
+  .etq-cuad.etq-serena .num{ color:#ffd24a; font-weight:900; font-size:14px; text-shadow:0 1px 2px rgba(0,0,0,.45); }
+  .etq-cuad.etq-serena .tel{ color:#fff; font-size:10.5px; font-weight:700; }
+  .etq-cuad.etq-serena-rural .caja{ background:rgba(185,28,28,.95); border:2px solid #fca5a5; }
+  .banner-serena{ background:#fef2f2 !important; color:#991b1b !important; border:1px solid #fecaca !important; }
+
+  /* Coquimbo - Tema Amarillo (exacto del botón Buscar #ffd24a) y Derivados */
+  .etq-cuad.etq-coquimbo .caja{ background:#ffd24a; color:#5a3d00; border:2px solid #5a3d00; box-shadow:0 3px 10px rgba(0,0,0,.35); }
+  .etq-cuad.etq-coquimbo-rural .caja{ background:#facc15; color:#713f12; border:2px solid #854d0e; }
+  .etq-cuad.etq-coquimbo .num{ color:#3b2000; font-weight:900; font-size:14px; letter-spacing:-0.2px; }
+  .etq-cuad.etq-coquimbo .tel{ color:#5a3d00; font-size:11px; font-weight:800; }
+  .banner-coquimbo{ background:#fefce8 !important; color:#854d0e !important; border:1px solid #fef08a !important; }
+  .coquimbo-tel-link{ display:inline-block; margin-top:6px; padding:8px 14px; background:#fef9c3;
+    border:1px solid #fde047; border-radius:9px; font-size:14px; font-weight:800; color:#854d0e; text-decoration:none; transition:background .15s; }
+  .coquimbo-tel-link:hover{ background:#fef08a; text-decoration:underline; }
+
+  /* Vicuña - Tema Verde Carabineros / Esmeralda */
+  .banner-vicuna{ background:#f0fdf4 !important; color:#166534 !important; border:1px solid #bbf7d0 !important; }
+  .etq-cuad.etq-vicuna .caja{ background:rgba(20,99,20,.94); color:#fff; border:2px solid #fff; box-shadow:0 3px 8px rgba(0,0,0,.35); }
+  .etq-cuad.etq-vicuna .num{ color:#ffd24a; font-weight:900; font-size:14px; text-shadow:0 1px 2px rgba(0,0,0,.45); }
+  .etq-cuad.etq-vicuna .tel{ color:#fff; font-size:10.5px; font-weight:700; }
+  .etq-cuad.etq-vicuna-rural .caja{ background:rgba(15,75,15,.95); border:2px solid #86efac; }
+  .vicuna-tel-link{ display:inline-block; margin-top:6px; padding:8px 14px; background:#dcfce7;
+    border:1px solid #86efac; border-radius:9px; font-size:14px; font-weight:800; color:#166534; text-decoration:none; transition:background .15s; }
+  .vicuna-tel-link:hover{ background:#bbf7d0; text-decoration:underline; }
+
+  /* Paihuano - Tema Azul / Cyan Valle Alto */
+  .banner-paihuano{ background:#f0f9ff !important; color:#0369a1 !important; border:1px solid #bae6fd !important; }
+  .etq-cuad.etq-paihuano .caja{ background:rgba(2,132,199,.94); color:#fff; border:2px solid #fff; box-shadow:0 3px 8px rgba(0,0,0,.35); }
+  .etq-cuad.etq-paihuano .num{ color:#ffd24a; font-weight:900; font-size:14px; text-shadow:0 1px 2px rgba(0,0,0,.45); }
+  .etq-cuad.etq-paihuano .tel{ color:#fff; font-size:10.5px; font-weight:700; }
+  .paihuano-tel-link{ display:inline-block; margin-top:6px; padding:8px 14px; background:#e0f2fe;
+    border:1px solid #7dd3fc; border-radius:9px; font-size:14px; font-weight:800; color:#0369a1; text-decoration:none; transition:background .15s; }
+  .paihuano-tel-link:hover{ background:#bae6fd; text-decoration:underline; }
+
+  /* Andacollo - Tema Terracota / Cobre Minero */
+  .banner-andacollo{ background:#fff7ed !important; color:#9a3412 !important; border:1px solid #fed7aa !important; }
+  .etq-cuad.etq-andacollo .caja{ background:rgba(194,65,12,.94); color:#fff; border:2px solid #fff; box-shadow:0 3px 8px rgba(0,0,0,.35); }
+  .etq-cuad.etq-andacollo .num{ color:#ffd24a; font-weight:900; font-size:14px; text-shadow:0 1px 2px rgba(0,0,0,.45); }
+  .etq-cuad.etq-andacollo .tel{ color:#fff; font-size:10.5px; font-weight:700; }
+  .andacollo-tel-link{ display:inline-block; margin-top:6px; padding:8px 14px; background:#ffedd5;
+    border:1px solid #fdba74; border-radius:9px; font-size:14px; font-weight:800; color:#9a3412; text-decoration:none; transition:background .15s; }
+  .andacollo-tel-link:hover{ background:#fed7aa; text-decoration:underline; }
+
+  .banner-bosquejo{ position:absolute; z-index:20; right:10px; top:10px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;
+    border-radius:10px; padding:8px 12px; font-size:12px; font-weight:600; max-width:320px; box-shadow:0 4px 14px rgba(0,0,0,.15); }
+
+  /* ===== Responsive Celulares Medianos y Pequeños ===== */
+  @media (max-width:640px){
+    #mapa-topbar{ padding:6px 8px; gap:5px; }
+    #mapa-topbar .titulo{ font-size:13px; width:100%; margin-right:0; margin-bottom:1px; }
+    #mapa-topbar .topbar-row{ width:100%; gap:4px; display:flex; align-items:center; }
+    #mapa-topbar select{ padding:6px 6px; font-size:12px; max-width:98px; flex:0 0 auto; }
+    .search-box-wrap{ flex:1 1 auto; min-width:0; }
+    #mapa-topbar input{ padding:6px 8px; font-size:13px; width:100%; min-width:0; }
+    #buscar-btn{ padding:6px 10px; font-size:12px; flex:0 0 auto; }
+    .banner-bosquejo{ max-width:55vw; font-size:10px; padding:4px 7px; top:6px; right:6px; }
+    #resultado{
+      left:8px; right:8px; bottom:10px; transform:none;
+      max-width:calc(100% - 16px); width:auto; padding:8px 11px;
+      font-size:11.5px; border-radius:12px;
+    }
+    .res-cuad-headline{ font-size:12px; }
+    .res-alt-list{ max-height:28vh; }
+  }
+  @media (max-width:360px){
+    #mapa-topbar{ padding:4px 6px; }
+    #mapa-topbar .titulo{ font-size:12px; }
+    #mapa-topbar select{ max-width:78px; font-size:11px; padding:5px 3px; }
+    #mapa-topbar input{ font-size:12px; padding:5px 6px; }
+    #buscar-btn{ padding:5px 7px; font-size:11px; }
+    #resultado{ left:5px; right:5px; bottom:6px; padding:7px 8px; font-size:11px; }
+    .res-cuad-headline{ font-size:11.5px; }
+    .res-chevron-bar{ padding:4px 6px; font-size:10.5px; }
+  }
+  @media (min-width: 800px){
+    #mapa-topbar{ justify-content: space-between; padding: 10px 22px; }
+    #mapa-topbar .titulo{ margin-right: 0; flex: 0 0 auto; }
+    #mapa-topbar .topbar-row{ flex: 0 1 700px; margin: 0 auto; justify-content: center; }
+    .search-box-wrap{ flex: 1 1 360px; max-width: 480px; }
+  }
+</style>
+</head>
+<body>
+  <div id="mapa-modal">
+    <div id="mapa-topbar">
+      <span class="titulo">Cuadrantes O.S.10</span>
+      <div class="topbar-row">
+        <select id="ciudad" aria-label="Seleccione Comuna">
+          <option value="coquimbo">Coquimbo</option>
+          <option value="serena" selected>La Serena</option>
+          <option value="vicuna">Vicuña</option>
+          <option value="paihuano">Paihuano</option>
+          <option value="andacollo">Andacollo</option>
+        </select>
+        <div class="search-box-wrap">
+          <input id="q" type="text" placeholder="Dirección o N° cuadrante (ej. Los Cedros, Balmaceda, 1, 5)…" autocomplete="off" />
+          <div id="q-autocomplete" class="q-autocomplete-dropdown"></div>
+        </div>
+        <button id="buscar-btn">Buscar</button>
+      </div>
+    </div>
+    <div style="position:relative; flex:1;">
+      <div id="map"></div>
+      <div class="banner-bosquejo" id="nota"></div>
+      <div id="resultado"></div>
+    </div>
+  </div>
+
+<!-- Datos GeoJSON de cuadrantes/unidades: archivo compartido (fuente única, también usado por el buscador de index.html) -->
+<script src="assets/js/cuadrantes-geodata.js?v=1"></script>
+
+<script>
+var map, capa=null, items=[], ciudad="serena", pin=null;
+
+function init(){
+  map=L.map('map').setView([-29.905,-71.245],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19,
+    attribution:'© OpenStreetMap'
+  }).addTo(map);
+
+  map.on('popupopen', function(e){
+    var el = e.popup.getElement();
+    if (el) {
+      L.DomEvent.disableClickPropagation(el);
+      L.DomEvent.disableScrollPropagation(el);
+    }
+  });
+
+  dibujar('serena');
+}
+
+function centro(latlngs){
+  var b=L.latLngBounds(latlngs);
+  return b.getCenter();
+}
+
+function ringsDe(feat){
+  var g=feat.geometry, out=[];
+  function poly(p){ out.push(p[0].map(function(c){return [c[1],c[0]];})); }
+  if(g.type==='Polygon') poly(g.coordinates);
+  else if(g.type==='MultiPolygon') g.coordinates.forEach(poly);
+  return out;
+}
+
+function dentro(lat,lng,ring){
+  var x=lng,y=lat,ins=false;
+  for(var i=0,j=ring.length-1;i<ring.length;j=i++){
+    var yi=ring[i][0],xi=ring[i][1],yj=ring[j][0],xj=ring[j][1];
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi)) ins=!ins;
+  }
+  return ins;
+}
+
+function enItem(lat,lng,it){
+  return it.rings.some(function(r){ return dentro(lat,lng,r); });
+}
+
+function telLink(tel){
+  var s=String(tel==null?'':tel).trim();
+  var d=s.replace(/[^\d]/g,'');
+  if(d.length<8) return '📞 '+(s||'—');
+  var href=(d.length===9?'+56'+d:d);
+  return '<a href="tel:'+href+'" class="tel-link">📞 '+s+'</a>';
+}
+
+function res(h){
+  var r=document.getElementById('resultado');
+  if(!r) return;
+  r.innerHTML=h;
+  r.classList.remove('res-collapsed');
+  r.style.display='block';
+  if(typeof initDraggableResultado === 'function') initDraggableResultado();
+}
+
+function polygonCentroid(pts){
+  var a=0, cx=0, cy=0;
+  for(var i=0, j=pts.length-1; i<pts.length; j=i++){
+    var p1=pts[j], p2=pts[i];
+    var f=(p1[1]*p2[0]) - (p2[1]*p1[0]);
+    a += f;
+    cx += (p1[1]+p2[1])*f;
+    cy += (p1[0]+p2[0])*f;
+  }
+  a *= 0.5;
+  if(Math.abs(a)<1e-10) return pts[0];
+  cx /= (6*a);
+  cy /= (6*a);
+  return [cy, cx];
+}
+
+function dibujar(cd){
+  ciudad=cd;
+  if(capa) map.removeLayer(capa);
+  capa=L.layerGroup().addTo(map);
+  items=[];
+  document.getElementById('resultado').style.display='none';
+
+  if(cd==='serena'){
+    // LA SERENA: 100% OFICIAL - 1ª Comisaría, 6ª Comisaría Las Compañías y Subcom. La Florida
+    var notaEl = document.getElementById('nota');
+    notaEl.className = 'banner-bosquejo banner-serena';
+    notaEl.innerHTML='✔️ La Serena: límites y teléfonos OFICIALES (1ª y 6ª Comisaría, Subcom. La Florida).';
+
+    json_Territorios_Plan_Cuadrante_0.features.forEach(function(f){
+      var p=f.properties;
+      var cuadN=String(p.CUAD_N);
+      var esUrbano=/^\d+$/.test(cuadN);
+      var n=esUrbano ? parseInt(cuadN,10) : cuadN;
+      var tel=p._FONO_CUAD;
+      var com=p._COM_SUBCO;
+      var sec=p.SECTOR || ('Cuadrante ' + cuadN);
+
+      var poly=L.geoJSON(f,{
+        style:{
+          color: esUrbano ? '#e11d1d' : '#991b1b',
+          weight: 2.8,
+          fillColor: esUrbano ? '#e11d1d' : '#dc2626',
+          fillOpacity: esUrbano ? 0.12 : 0.08
+        }
+      }).addTo(capa);
+      
+      var mapaImgSerena = null;
+      var comisariaUrl = 'https://www.carabineros.cl/detalleComisaria.php?comid=d5c71f82d49770e358bc3a6698922952'; // 1ra Comisaría
+      var comisariaTxt = '🏛️ Ver 1ª Comisaría La Serena';
+
+      if (esUrbano) {
+        if (n <= 3) {
+          mapaImgSerena = 'https://www.carabineros.cl/mapa_cuadrante/C' + n + '_LAS_COMPA%C3%91IAS.jpg';
+          comisariaUrl = 'https://www.carabineros.cl/detalleComisaria.php?comid=3aed82876ae7090d83ca2d0900e3d991';
+          comisariaTxt = '🏛️ Ver 6ª Comisaría Las Compañías';
+        } else {
+          mapaImgSerena = 'https://www.carabineros.cl/mapa_cuadrante/C' + n + '_LASERENA.jpg';
+          if (n >= 9) {
+            comisariaTxt = '🏛️ Ver Subcomisaría La Florida';
+          }
+        }
+      } else {
+        if (cuadN === 'SRA' || cuadN === 'SRB') {
+          comisariaUrl = 'https://www.carabineros.cl/detalleComisaria.php?comid=3aed82876ae7090d83ca2d0900e3d991';
+          comisariaTxt = '🏛️ Ver 6ª Comisaría Las Compañías';
+        } else if (cuadN === 'SRC') {
+          comisariaTxt = '🏛️ Ver Subcomisaría La Florida';
+        }
+      }
+      
+      var popupHtml = '<div class="popup-title" style="color:#b91c1c;">' + (esUrbano ? 'Cuadrante N° ' + n : 'Sector Rural ' + cuadN) + '</div>' +
+                      '<div class="popup-sector">📍 ' + sec + '</div>' +
+                      '<div class="popup-unidad">🏛️ ' + com + '</div>' +
+                      telLink(tel) +
+                      (mapaImgSerena ? '<br><a href="' + mapaImgSerena + '" target="_blank" class="doc-link" style="color:#b91c1c;">🗺️ Ver Lámina Oficial Carabineros</a>' : '') +
+                      '<br><a href="' + comisariaUrl + '" target="_blank" class="doc-link" style="color:#047857;margin-top:3px;">' + comisariaTxt + '</a>';
+
+      poly.bindPopup(popupHtml);
+
+      var rings=ringsDe(f);
+      var allPts=[].concat.apply([],rings);
+      var cen = rings[0] ? polygonCentroid(rings[0]) : centro(allPts);
+      
+      var etqClass = esUrbano ? 'etq-cuad etq-serena' : 'etq-cuad etq-serena etq-serena-rural';
+      var etqText = esUrbano ? ('N° ' + n) : cuadN;
+
+      var etq=L.marker(cen,{
+        icon:L.divIcon({
+          className: etqClass,
+          iconSize:[96,34],
+          iconAnchor:[48,17],
+          html:'<div class="caja"><div class="num">'+etqText+'</div><div class="tel">'+tel+'</div></div>'
+        })
+      }).addTo(capa);
+      
+      etq.on('click',function(){ poly.openPopup(); });
+      items.push({n:n,cod:cuadN,tel:tel,sector:sec+' ('+com+')',rings:rings,layer:poly});
+    });
+
+    if(typeof json_Unidad_o_Destacamento_1!=='undefined'){
+      json_Unidad_o_Destacamento_1.features.forEach(function(u){
+        var c=u.geometry.coordinates;
+        L.marker([c[1],c[0]]).addTo(capa).bindPopup('👮 <b>'+u.properties.Nombre+'</b>');
+      });
+    }
+    map.setView([-29.905,-71.245],12);
+
+  } else if(cd==='coquimbo'){
+    // COQUIMBO: 100% OFICIAL - TEMA AMARILLO Y DERIVADOS
+    var notaEl = document.getElementById('nota');
+    notaEl.className = 'banner-bosquejo banner-coquimbo';
+    notaEl.innerHTML = '✔️ Coquimbo: límites y teléfonos OFICIALES (Carabineros de Chile).';
+    
+    json_Territorios_Plan_Cuadrante_Coquimbo.features.forEach(function(f){
+      var p=f.properties;
+      var cuadN=String(p.CUAD_N);
+      var esUrbano=/^\d+$/.test(cuadN);
+      var tel=p._FONO_CUAD;
+      var com=p._COM_SUBCO;
+      var sec=p.SECTOR;
+      var lim=p.LIMITES;
+      var mapaImg=p.MAPA_IMG;
+
+      var colorBorder = esUrbano ? '#d97706' : '#b45309';
+      var colorFill = esUrbano ? '#facc15' : '#f59e0b';
+
+      var poly=L.geoJSON(f,{
+        style:{
+          color: colorBorder,
+          weight: 2.8,
+          fillColor: colorFill,
+          fillOpacity: 0.22
+        }
+      }).addTo(capa);
+
+      var telClean = tel.replace(/[^\d]/g,'');
+      var telHref = (telClean.length===9 ? '+56'+telClean : telClean);
+
+      var popupHtml = '<div class="popup-title" style="color:#b45309;">' + (esUrbano ? 'Cuadrante N° ' + cuadN : 'Sector ' + cuadN) + '</div>' +
+                      '<div class="popup-sector">📍 ' + sec + '</div>' +
+                      '<div class="popup-unidad">🏛️ ' + com + '</div>' +
+                      (lim ? '<div style="font-size:11.5px;color:#6b7280;margin-bottom:6px;"><b>Límites:</b> ' + lim + '</div>' : '') +
+                      '<a href="tel:' + telHref + '" class="coquimbo-tel-link">📞 ' + tel + '</a>' +
+                      (mapaImg ? '<br><a href="' + mapaImg + '" target="_blank" class="doc-link" style="color:#b45309;">🗺️ Ver Lámina Oficial Carabineros</a>' : '');
+
+      poly.bindPopup(popupHtml);
+
+      var rings=ringsDe(f);
+      var allPts=[].concat.apply([],rings);
+      var cen = rings[0] ? polygonCentroid(rings[0]) : centro(allPts);
+
+      var etqClass = esUrbano ? 'etq-cuad etq-coquimbo' : 'etq-cuad etq-coquimbo-rural';
+      var etqText = esUrbano ? ('N° ' + cuadN) : cuadN;
+
+      var etq=L.marker(cen,{
+        icon:L.divIcon({
+          className: etqClass,
+          iconSize:[96,34],
+          iconAnchor:[48,17],
+          html:'<div class="caja"><div class="num">'+etqText+'</div><div class="tel">'+tel+'</div></div>'
+        })
+      }).addTo(capa);
+
+      etq.on('click',function(){ poly.openPopup(); });
+
+      items.push({
+        n: esUrbano ? parseInt(cuadN,10) : cuadN,
+        cod: cuadN,
+        tel: tel,
+        sector: sec + ' (' + com + ')',
+        rings: rings,
+        layer: poly
+      });
+    });
+
+    if(typeof json_Unidades_Coquimbo!=='undefined'){
+      json_Unidades_Coquimbo.features.forEach(function(u){
+        var c=u.geometry.coordinates;
+        var p=u.properties;
+        L.marker([c[1],c[0]]).addTo(capa).bindPopup(
+          '👮 <b>'+p.Nombre+'</b><br>' +
+          (p.Dir ? '📍 '+p.Dir+'<br>' : '') +
+          telLink(p.Fono)
+        );
+      });
+    }
+    map.setView([-29.965,-71.335],13);
+
+  } else if(cd==='vicuna'){
+    // VICUÑA: 100% OFICIAL - 5ª Comisaría de Vicuña y Destacamentos
+    var notaEl = document.getElementById('nota');
+    notaEl.className = 'banner-bosquejo banner-vicuna';
+    notaEl.innerHTML = '✔️ Vicuña: límites y teléfonos OFICIALES (5ª Comisaría de Vicuña y Destacamentos).';
+
+    json_Territorios_Plan_Cuadrante_Vicuna.features.forEach(function(f){
+      var p=f.properties;
+      var cuadN=String(p.CUAD_N);
+      var esUrbano=/^\d+$/.test(cuadN);
+      var tel=p._FONO_CUAD;
+      var com=p._COM_SUBCO;
+      var sec=p.SECTOR;
+      var mapaImg=p.MAPA_IMG;
+
+      var colorBorder = esUrbano ? '#15803d' : '#047857';
+      var colorFill = esUrbano ? '#22c55e' : '#10b981';
+
+      var poly=L.geoJSON(f,{
+        style:{
+          color: colorBorder,
+          weight: 2.8,
+          fillColor: colorFill,
+          fillOpacity: esUrbano ? 0.22 : 0.14
+        }
+      }).addTo(capa);
+
+      var telClean = tel.replace(/[^\d]/g,'');
+      var telHref = (telClean.length===9 ? '+56'+telClean : telClean);
+
+      var popupHtml = '<div class="popup-title" style="color:#166534;">' + (esUrbano ? 'Cuadrante N° ' + cuadN : 'Sector Rural ' + cuadN) + '</div>' +
+                      '<div class="popup-sector">📍 ' + sec + '</div>' +
+                      '<div class="popup-unidad">🏛️ ' + com + '</div>' +
+                      '<a href="tel:' + telHref + '" class="vicuna-tel-link">📞 ' + tel + '</a>' +
+                      (mapaImg ? '<br><a href="' + mapaImg + '" target="_blank" class="doc-link" style="color:#15803d;">🗺️ Ver Lámina Oficial Carabineros</a>' : '');
+
+      poly.bindPopup(popupHtml);
+
+      var rings=ringsDe(f);
+      var allPts=[].concat.apply([],rings);
+      var cen = rings[0] ? polygonCentroid(rings[0]) : centro(allPts);
+
+      var etqClass = esUrbano ? 'etq-cuad etq-vicuna' : 'etq-cuad etq-vicuna etq-vicuna-rural';
+      var etqText = esUrbano ? ('N° ' + cuadN) : cuadN;
+
+      var etq=L.marker(cen,{
+        icon:L.divIcon({
+          className: etqClass,
+          iconSize:[96,34],
+          iconAnchor:[48,17],
+          html:'<div class="caja"><div class="num">'+etqText+'</div><div class="tel">'+tel+'</div></div>'
+        })
+      }).addTo(capa);
+
+      etq.on('click',function(){ poly.openPopup(); });
+
+      items.push({
+        n: esUrbano ? parseInt(cuadN,10) : cuadN,
+        cod: cuadN,
+        tel: tel,
+        sector: sec + ' (' + com + ')',
+        rings: rings,
+        layer: poly
+      });
+    });
+
+    if(typeof json_Unidades_Vicuna!=='undefined'){
+      json_Unidades_Vicuna.features.forEach(function(u){
+        var c=u.geometry.coordinates;
+        var p=u.properties;
+        L.marker([c[1],c[0]]).addTo(capa).bindPopup(
+          '👮 <b>'+p.Nombre+'</b><br>' +
+          (p.Dir ? '📍 '+p.Dir+'<br>' : '') +
+          telLink(p.Fono)
+        );
+      });
+    }
+    map.setView([-30.035,-70.710],12);
+
+  } else if(cd==='paihuano'){
+    // PAIHUANO: OFICIAL - Tenencia Paihuano y Retén Pisco Elqui (F)
+    var notaEl = document.getElementById('nota');
+    notaEl.className = 'banner-bosquejo banner-paihuano';
+    notaEl.innerHTML = '✔️ Paihuano: límites y destacamentos OFICIALES (Tenencia Paihuano y Retén Pisco Elqui).';
+
+    json_Territorios_Plan_Cuadrante_Paihuano.features.forEach(function(f){
+      var p=f.properties;
+      var cuadN=String(p.CUAD_N);
+      var tel=p._FONO_CUAD;
+      var com=p._COM_SUBCO;
+      var sec=p.SECTOR;
+
+      var poly=L.geoJSON(f,{
+        style:{
+          color: '#0284c7',
+          weight: 2.8,
+          fillColor: '#38bdf8',
+          fillOpacity: 0.18
+        }
+      }).addTo(capa);
+
+      var telClean = tel.replace(/[^\d]/g,'');
+      var telHref = (telClean.length===9 ? '+56'+telClean : telClean);
+
+      var popupHtml = '<div class="popup-title" style="color:#0369a1;">' + sec + '</div>' +
+                      '<div class="popup-unidad">🏛️ ' + com + '</div>' +
+                      '<a href="tel:' + telHref + '" class="paihuano-tel-link">📞 ' + tel + '</a>';
+
+      poly.bindPopup(popupHtml);
+
+      var rings=ringsDe(f);
+      var allPts=[].concat.apply([],rings);
+      var cen = rings[0] ? polygonCentroid(rings[0]) : centro(allPts);
+
+      var etq=L.marker(cen,{
+        icon:L.divIcon({
+          className: 'etq-cuad etq-paihuano',
+          iconSize:[106,34],
+          iconAnchor:[53,17],
+          html:'<div class="caja"><div class="num">'+(cuadN==='PAI-1'?'Ten. Paihuano':'Ret. Pisco Elqui')+'</div><div class="tel">'+tel+'</div></div>'
+        })
+      }).addTo(capa);
+
+      etq.on('click',function(){ poly.openPopup(); });
+
+      items.push({
+        n: cuadN,
+        cod: cuadN,
+        tel: tel,
+        sector: sec + ' (' + com + ')',
+        rings: rings,
+        layer: poly
+      });
+    });
+
+    if(typeof json_Unidades_Paihuano!=='undefined'){
+      json_Unidades_Paihuano.features.forEach(function(u){
+        var c=u.geometry.coordinates;
+        var p=u.properties;
+        L.marker([c[1],c[0]]).addTo(capa).bindPopup(
+          '👮 <b>'+p.Nombre+'</b><br>' +
+          (p.Dir ? '📍 '+p.Dir+'<br>' : '') +
+          telLink(p.Fono)
+        );
+      });
+    }
+    map.setView([-30.080,-70.510],11);
+
+  } else if(cd==='andacollo'){
+    // ANDACOLLO: OFICIAL - Tenencia Andacollo (Prefectura Coquimbo)
+    var notaEl = document.getElementById('nota');
+    notaEl.className = 'banner-bosquejo banner-andacollo';
+    notaEl.innerHTML = '✔️ Andacollo: límites y destacamento OFICIAL (Tenencia Andacollo - Domingo Santa María 509).';
+
+    json_Territorios_Plan_Cuadrante_Andacollo.features.forEach(function(f){
+      var p=f.properties;
+      var cuadN=String(p.CUAD_N);
+      var tel=p._FONO_CUAD;
+      var com=p._COM_SUBCO;
+      var sec=p.SECTOR;
+
+      var poly=L.geoJSON(f,{
+        style:{
+          color: '#c2410c',
+          weight: 2.8,
+          fillColor: '#ea580c',
+          fillOpacity: 0.16
+        }
+      }).addTo(capa);
+
+      var telClean = tel.replace(/[^\d]/g,'');
+      var telHref = (telClean.length===9 ? '+56'+telClean : telClean);
+
+      var popupHtml = '<div class="popup-title" style="color:#c2410c;">' + sec + '</div>' +
+                      '<div class="popup-unidad">🏛️ ' + com + '</div>' +
+                      '<div style="font-size:12px;color:#4b5563;margin-bottom:4px;">📍 ' + p.DIR + '</div>' +
+                      '<a href="tel:' + telHref + '" class="andacollo-tel-link">📞 ' + tel + '</a>';
+
+      poly.bindPopup(popupHtml);
+
+      var rings=ringsDe(f);
+      var allPts=[].concat.apply([],rings);
+      var cen = rings[0] ? polygonCentroid(rings[0]) : centro(allPts);
+
+      var etq=L.marker(cen,{
+        icon:L.divIcon({
+          className: 'etq-cuad etq-andacollo',
+          iconSize:[110,34],
+          iconAnchor:[55,17],
+          html:'<div class="caja"><div class="num">Ten. Andacollo</div><div class="tel">'+tel+'</div></div>'
+        })
+      }).addTo(capa);
+
+      etq.on('click',function(){ poly.openPopup(); });
+
+      items.push({
+        n: 'Andacollo',
+        cod: cuadN,
+        tel: tel,
+        sector: sec + ' (' + com + ')',
+        rings: rings,
+        layer: poly
+      });
+    });
+
+    if(typeof json_Unidades_Andacollo!=='undefined'){
+      json_Unidades_Andacollo.features.forEach(function(u){
+        var c=u.geometry.coordinates;
+        var p=u.properties;
+        L.marker([c[1],c[0]]).addTo(capa).bindPopup(
+          '👮 <b>'+p.Nombre+'</b><br>' +
+          (p.Dir ? '📍 '+p.Dir+'<br>' : '') +
+          telLink(p.Fono)
+        );
+      });
+    }
+    map.setView([-30.240,-71.090],12);
+  }
+}
+
+// Nombre, color de borde del resultado y color del cuadrado del popup por comuna
+function metaComuna(cd){
+  return {
+    txt:    (cd==='serena' ? 'La Serena' : cd==='vicuna' ? 'Vicuña' : cd==='paihuano' ? 'Paihuano' : cd==='andacollo' ? 'Andacollo' : 'Coquimbo'),
+    border: (cd==='coquimbo' ? '#d97706' : cd==='serena' ? '#dc2626' : cd==='vicuna' ? '#15803d' : cd==='paihuano' ? '#0284c7' : '#c2410c'),
+    cuad:   (cd==='coquimbo' ? '#facc15' : cd==='serena' ? '#dc2626' : cd==='vicuna' ? '#22c55e' : cd==='paihuano' ? '#38bdf8' : '#ea580c')
+  };
+}
+
+function escapeHtml(str){
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function cerrarResultado(){
+  var r = document.getElementById('resultado');
+  if (r) r.style.display = 'none';
+}
+
+// -------------------------------------------------------------
+// CACHÉ EN MEMORIA Y EVALUACIÓN PRECOMPUTADA (Ultra-rápido y ágil)
+// -------------------------------------------------------------
+var cacheCuadrantes = null;
+var geoLocalCache = {};
+try {
+  var s = sessionStorage.getItem('os10_geo_cache_v3');
+  if (s) geoLocalCache = JSON.parse(s);
+} catch(e){}
+
+function saveGeoCache(key, data) {
+  try {
+    geoLocalCache[key] = data;
+    sessionStorage.setItem('os10_geo_cache_v3', JSON.stringify(geoLocalCache));
+  } catch(e){}
+}
+
+function initCuadrantesCache(){
+  if (cacheCuadrantes) return cacheCuadrantes;
+  cacheCuadrantes = {
+    coquimbo: [],
+    serena: [],
+    vicuna: [],
+    paihuano: [],
+    andacollo: []
+  };
+
+  // Coquimbo
+  if (typeof json_Territorios_Plan_Cuadrante_Coquimbo !== 'undefined') {
+    json_Territorios_Plan_Cuadrante_Coquimbo.features.forEach(function(f){
+      var p = f.properties;
+      var cuadN = String(p.CUAD_N);
+      var esUrbano = /^\d+$/.test(cuadN);
+      cacheCuadrantes.coquimbo.push({
+        comuna: 'coquimbo',
+        n: esUrbano ? parseInt(cuadN,10) : cuadN,
+        cod: cuadN,
+        tel: p._FONO_CUAD,
+        sector: (p.SECTOR || ('Cuadrante ' + cuadN)) + (p._COM_SUBCO ? ' (' + p._COM_SUBCO + ')' : ''),
+        limites: p.LIMITES || '',
+        rings: ringsDe(f),
+        feature: f
+      });
+    });
+  }
+
+  // La Serena
+  if (typeof json_Territorios_Plan_Cuadrante_0 !== 'undefined') {
+    json_Territorios_Plan_Cuadrante_0.features.forEach(function(f){
+      var p = f.properties;
+      var cuadN = String(p.CUAD_N);
+      var esUrbano = /^\d+$/.test(cuadN);
+      var n = esUrbano ? parseInt(cuadN,10) : cuadN;
+      var sec = p.SECTOR || ('Cuadrante ' + cuadN);
+      cacheCuadrantes.serena.push({
+        comuna: 'serena',
+        n: n,
+        cod: cuadN,
+        tel: p._FONO_CUAD,
+        sector: sec + (p._COM_SUBCO ? ' (' + p._COM_SUBCO + ')' : ''),
+        rings: ringsDe(f),
+        feature: f
+      });
+    });
+  }
+
+  // Vicuña
+  if (typeof json_Territorios_Plan_Cuadrante_Vicuna !== 'undefined') {
+    json_Territorios_Plan_Cuadrante_Vicuna.features.forEach(function(f){
+      var p = f.properties;
+      var cuadN = String(p.CUAD_N);
+      var esUrbano = /^\d+$/.test(cuadN);
+      cacheCuadrantes.vicuna.push({
+        comuna: 'vicuna',
+        n: esUrbano ? parseInt(cuadN,10) : cuadN,
+        cod: cuadN,
+        tel: p._FONO_CUAD,
+        sector: (p.SECTOR || ('Cuadrante ' + cuadN)) + (p._COM_SUBCO ? ' (' + p._COM_SUBCO + ')' : ''),
+        rings: ringsDe(f),
+        feature: f
+      });
+    });
+  }
+
+  // Paihuano
+  if (typeof json_Territorios_Plan_Cuadrante_Paihuano !== 'undefined') {
+    json_Territorios_Plan_Cuadrante_Paihuano.features.forEach(function(f){
+      var p = f.properties;
+      var cuadN = String(p.CUAD_N);
+      cacheCuadrantes.paihuano.push({
+        comuna: 'paihuano',
+        n: cuadN,
+        cod: cuadN,
+        tel: p._FONO_CUAD,
+        sector: (p.SECTOR || ('Cuadrante ' + cuadN)) + (p._COM_SUBCO ? ' (' + p._COM_SUBCO + ')' : ''),
+        rings: ringsDe(f),
+        feature: f
+      });
+    });
+  }
+
+  // Andacollo
+  if (typeof json_Territorios_Plan_Cuadrante_Andacollo !== 'undefined') {
+    json_Territorios_Plan_Cuadrante_Andacollo.features.forEach(function(f){
+      var p = f.properties;
+      var cuadN = String(p.CUAD_N);
+      cacheCuadrantes.andacollo.push({
+        comuna: 'andacollo',
+        n: 'Andacollo',
+        cod: cuadN,
+        tel: p._FONO_CUAD,
+        sector: (p.SECTOR || ('Cuadrante ' + cuadN)) + (p._COM_SUBCO ? ' (' + p._COM_SUBCO + ')' : ''),
+        rings: ringsDe(f),
+        feature: f
+      });
+    });
+  }
+
+  return cacheCuadrantes;
+}
+
+// -------------------------------------------------------------
+// CATÁLOGO DE CALLES Y PASAJES EN AMBAS COMUNAS (0 ms)
+// Permite mostrar de inmediato opciones entre La Serena y Coquimbo
+// -------------------------------------------------------------
+// Calles multi-comuna: catálogo compartido (assets/js/cuadrantes-catalogo.js)
+var COMMON_MULTI_COMMUNE_STREETS = (typeof window !== 'undefined' && window.OS10_CATALOGO_STREETS) || [];
+
+function buscarCallesMulticomuna(val){
+  var norm = (val || '').toLowerCase().trim();
+  if (norm.length < 2) return [];
+  var sugs = [];
+  for (var i = 0; i < COMMON_MULTI_COMMUNE_STREETS.length; i++) {
+    var entry = COMMON_MULTI_COMMUNE_STREETS[i];
+    if (entry.regex.test(norm)) {
+      entry.locations.forEach(function(loc){
+        sugs.push({
+          comuna: loc.comuna,
+          cuad: { n: loc.cuadN, cod: String(loc.cuadN), tel: loc.tel, sector: loc.sector },
+          street: entry.streetName,
+          cuadTxt: 'Cuadrante N° ' + loc.cuadN,
+          sectorTxt: loc.sector,
+          displayFull: loc.sector,
+          displayRoad: loc.sector,
+          tel: loc.tel,
+          lat: loc.lat,
+          lng: loc.lng
+        });
+      });
+      break;
+    }
+  }
+  return sugs;
+}
+
+// Base completa de calles (assets/js/calles-db.js): convierte sus coincidencias
+// al formato de sugerencia del mapa, resolviendo el cuadrante real (con sus
+// polígonos) desde la caché para poder resaltarlo. Devuelve TODAS las comunas y
+// cuadrantes donde existe cada calle/pasaje/avenida/ruta que coincide.
+function dbHitsToMapSugs(val){
+  if (typeof window.OS10_buscarCalles !== 'function') return [];
+  var hits = window.OS10_buscarCalles(val) || [];
+  if (!hits.length) return [];
+  var allCuads = initCuadrantesCache();
+  var out = [], seen = {};
+  for (var i = 0; i < hits.length; i++) {
+    var h = hits[i];
+    var list = allCuads[h.comuna] || [];
+    var cobj = null;
+    for (var j = 0; j < list.length; j++) {
+      if (String(list[j].cod) === String(h.cod)) { cobj = list[j]; break; }
+    }
+    if (!cobj) continue;
+    var key = h.comuna + '_' + h.cod + '_' + (h.street || '').toLowerCase();
+    if (seen[key]) continue;
+    seen[key] = true;
+    var esNum = /^\d+$/.test(String(cobj.n));
+    out.push({
+      comuna: h.comuna,
+      cuad: cobj,
+      street: h.street,
+      cuadTxt: esNum ? ('Cuadrante N° ' + cobj.n) : cobj.sector,
+      sectorTxt: h.street + ' — ' + cobj.sector,
+      displayFull: h.street + ' — ' + cobj.sector + ', ' + metaComuna(h.comuna).txt,
+      displayRoad: h.street,
+      tel: cobj.tel,
+      lat: h.lat,
+      lng: h.lng
+    });
+  }
+  return out;
+}
+
+// Une sugerencias curadas + base de calles sin repetir calle en el mismo cuadrante.
+function mergeMapSugs(curadas, base){
+  var out = [], seen = {};
+  function add(arr){
+    (arr || []).forEach(function(s){
+      var road = (s.street || s.displayRoad || s.sectorTxt || '')
+                 .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+      var key = s.comuna + '_' + (s.cuad && s.cuad.cod != null ? s.cuad.cod : s.cuadTxt) + '_' + road;
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push(s);
+    });
+  }
+  add(curadas);
+  add(base);
+  return out;
+}
+
+// Tabla de hitos kilométricos y numeración exacta para grandes avenidas
+// Hitos de grandes avenidas: catálogo compartido (assets/js/cuadrantes-catalogo.js)
+var ARTERY_MILESTONES = (typeof window !== 'undefined' && window.OS10_CATALOGO_MILESTONES) || [];
+
+function checkMilestone(query, comunaActual){
+  var qClean = (query || '').toLowerCase().trim();
+  var numMatch = qClean.match(/(?:(?:n[°º.]?|#)\s*)?(\b\d{1,5}\b)/i);
+  var num = numMatch ? parseInt(numMatch[1], 10) : null;
+  var streetOnly = numMatch ? qClean.replace(numMatch[0], '').trim() : qClean;
+
+  for (var i = 0; i < ARTERY_MILESTONES.length; i++) {
+    var art = ARTERY_MILESTONES[i];
+    if (art.pattern.test(streetOnly) || art.pattern.test(qClean)) {
+      var targetComuna = art.comuna;
+      var matchedRange = null;
+      if (num !== null) {
+        for (var j = 0; j < art.ranges.length; j++) {
+          if (num <= art.ranges[j].maxNum) {
+            matchedRange = art.ranges[j];
+            break;
+          }
+        }
+      } else {
+        matchedRange = art.ranges[0];
+      }
+      if (matchedRange) {
+        var finalComuna = matchedRange.comuna || targetComuna;
+        return {
+          milestone: true,
+          comuna: finalComuna,
+          street: art.name,
+          num: num,
+          lat: matchedRange.lat,
+          lng: matchedRange.lng,
+          cuadN: matchedRange.cuad,
+          desc: matchedRange.desc
+        };
+      }
+    }
+  }
+  return null;
+}
+
+var COMUNA_VIEWBOXES = {
+  coquimbo: '-71.39,-29.93,-71.24,-30.12',
+  serena: '-71.32,-29.82,-71.16,-29.99',
+  vicuna: '-71.05,-29.95,-70.50,-30.15',
+  paihuano: '-70.60,-30.00,-70.35,-30.30',
+  andacollo: '-71.18,-30.20,-71.00,-30.30'
+};
+
+// Búsqueda geocodificada optimizada con timeout rápido (3.5s) y captura segura
+function fetchNominatim(query, comunaKey){
+  var norm = query.toLowerCase().trim().replace(/\s+/g,' ');
+  var cKey = comunaKey || '';
+  var cacheKey = norm + '__' + cKey;
+  if (geoLocalCache[cacheKey]) {
+    return Promise.resolve(geoLocalCache[cacheKey]);
+  }
+
+  // Búsqueda en toda la Región de Coquimbo para hallar alternativas entre comunas (ej. La Serena y Coquimbo)
+  var qParam = norm + ', Región de Coquimbo, Chile';
+  var vb = '-71.7,-29.5,-70.2,-30.6';
+
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=cl&addressdetails=1' +
+            '&viewbox=' + vb + '&bounded=0' +
+            '&q=' + encodeURIComponent(qParam);
+
+  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timer = controller ? setTimeout(function(){ controller.abort(); }, 3500) : null;
+
+  return fetch(url, { signal: controller ? controller.signal : undefined })
+    .then(function(r){
+      if (timer) clearTimeout(timer);
+      if (!r.ok) return [];
+      return r.json();
+    })
+    .then(function(data){
+      if (Array.isArray(data) && data.length) {
+        saveGeoCache(cacheKey, data);
+      }
+      return Array.isArray(data) ? data : [];
+    })
+    .catch(function(err){
+      if (timer) clearTimeout(timer);
+      console.warn('Advertencia en conexión con servicio de mapas:', err);
+      return [];
+    });
+}
+
+// -------------------------------------------------------------
+// GEOCODIFICACIÓN EXACTA POR NUMERACIÓN (ej. "Aldunate 1416")
+// Nominatim casi no tiene numeración domiciliaria en la región, así que
+// para "calle + número" se consulta primero el geocodificador de ArcGIS
+// (direcciones reales/interpoladas) y Photon (portales OSM con número).
+// -------------------------------------------------------------
+var COMUNA_CENTROS = {
+  coquimbo: [-29.9533, -71.3436],
+  serena: [-29.9045, -71.2489],
+  vicuna: [-30.0319, -70.7081],
+  paihuano: [-30.0277, -70.5197],
+  andacollo: [-30.2316, -71.0846]
+};
+
+function normDir(s){
+  return String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Comuna mencionada en el texto (ej. "aldunate 1416, coquimbo")
+function comunaEnTexto(txt){
+  var t = normDir(txt);
+  if (/\b(la serena|serena|las companias|companias)\b/.test(t)) return 'serena';
+  if (/\bcoquimbo\b/.test(t)) return 'coquimbo';
+  if (/\bvicuna\b/.test(t)) return 'vicuna';
+  if (/\b(paihuano|paiguano|pisco elqui|montegrande|horcon|alcohuaz)\b/.test(t)) return 'paihuano';
+  if (/\bandacollo\b/.test(t)) return 'andacollo';
+  return null;
+}
+
+// Separa "calle + número" ("Aldunate 1416", "Av. del Mar #3000, La Serena").
+// Devuelve null si no hay numeración o si el texto es solo un número.
+function parseDireccionConNumero(q){
+  var t = String(q || '').trim();
+  // Se toma el ÚLTIMO número como numeración ("Calle 5 Norte 123" -> 123).
+  var m = t.match(/^(.*[a-záéíóúüñ].*?)[\s,]+(?:n[°º.]?\s*|#\s*)?(\d{1,5})\b\s*(?:,?\s*([^\d]*))?$/i);
+  if (!m) return null;
+  var calle = m[1].replace(/[,\s]+$/, '').trim();
+  if (normDir(calle).replace(/\b(calle|avenida|av|pasaje|psje|pje)\b/g, '').trim().length < 3) return null;
+  return { calle: calle, num: m[2], resto: (m[3] || '').trim(), comuna: comunaEnTexto(m[3] || '') || comunaEnTexto(calle) };
+}
+
+// Palabras significativas del nombre de la calle, para validar que el
+// geocodificador no devuelva otra calle distinta.
+function tokensCalle(calle){
+  var stop = { calle:1, avenida:1, av:1, pasaje:1, psje:1, pje:1, de:1, del:1, la:1, las:1, los:1, el:1, y:1, coquimbo:1, serena:1 };
+  return normDir(calle).split(' ').filter(function(w){ return w.length > 2 && !stop[w]; });
+}
+
+// Palabras completas ("colo colo" no debe coincidir con "Colón").
+function coincideCalle(nombre, tokens){
+  var palabras = normDir(nombre).split(' ');
+  if (!tokens.length) return true;
+  return tokens.every(function(w){ return palabras.indexOf(w) !== -1; });
+}
+
+// Palabras del nombre real que el usuario NO escribió (0 = nombre idéntico).
+// Sirve para preferir "Balmaceda" sobre "Raúl Marín Balmaceda" o "Escalera Balmaceda".
+function palabrasExtra(nombre, tokens){
+  return tokensCalle(nombre).filter(function(w){ return tokens.indexOf(w) === -1; }).length;
+}
+
+function fetchConTimeout(url, ms){
+  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timer = controller ? setTimeout(function(){ controller.abort(); }, ms) : null;
+  return fetch(url, { signal: controller ? controller.signal : undefined })
+    .then(function(r){ if (timer) clearTimeout(timer); return r.ok ? r.json() : null; })
+    .catch(function(){ if (timer) clearTimeout(timer); return null; });
+}
+
+// ArcGIS World Geocoder: devuelve [{lat,lng,label,exacto}]
+function geoArcgis(dir, comunaKey){
+  var linea = dir.calle + ' ' + dir.num + ', ' +
+    (comunaKey ? metaComuna(comunaKey).txt + ', ' : '') + 'Región de Coquimbo, Chile';
+  var c = COMUNA_CENTROS[comunaKey || 'coquimbo'];
+  var url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates' +
+    '?f=json&countryCode=CHL&maxLocations=5&outFields=Addr_type,AddNum,StName,City' +
+    '&location=' + c[1] + ',' + c[0] +
+    '&SingleLine=' + encodeURIComponent(linea);
+  var tokens = tokensCalle(dir.calle);
+  return fetchConTimeout(url, 3500).then(function(js){
+    var out = [];
+    ((js && js.candidates) || []).forEach(function(cd){
+      var a = cd.attributes || {};
+      var tipo = a.Addr_type || '';
+      if (['PointAddress','StreetAddress','StreetAddressExt','Subaddress'].indexOf(tipo) === -1) return;
+      if (String(a.AddNum || '') !== String(dir.num)) return;
+      if (cd.score < 85 || !coincideCalle(a.StName || cd.address, tokens)) return;
+      out.push({
+        lat: cd.location.y, lng: cd.location.x,
+        // ArcGIS escribe "Paiguano": se normaliza al nombre oficial.
+        label: String(cd.address || '').split(',').slice(0, 2).join(',').replace(/Paiguano/g, 'Paihuano'),
+        exacto: tipo === 'PointAddress' || tipo === 'Subaddress',
+        // 2 = dirección real registrada, 1 = interpolada, 0 = extrapolada
+        // (StreetAddressExt: número fuera del rango conocido de la calle).
+        calidad: (tipo === 'PointAddress' || tipo === 'Subaddress') ? 2 : tipo === 'StreetAddress' ? 1 : 0,
+        extra: palabrasExtra(a.StName || '', tokens),
+        score: cd.score
+      });
+    });
+    return out;
+  });
+}
+
+// Photon (OSM): solo portales/locales con el mismo número y calle.
+function geoPhoton(dir, comunaKey){
+  var c = COMUNA_CENTROS[comunaKey || 'coquimbo'];
+  var url = 'https://photon.komoot.io/api/?limit=10&lat=' + c[0] + '&lon=' + c[1] +
+    '&bbox=-71.7,-30.6,-70.2,-29.5' +
+    '&q=' + encodeURIComponent(dir.calle + ' ' + dir.num + (comunaKey ? ' ' + metaComuna(comunaKey).txt : ''));
+  var tokens = tokensCalle(dir.calle);
+  return fetchConTimeout(url, 3500).then(function(js){
+    var out = [];
+    ((js && js.features) || []).forEach(function(f){
+      var p = f.properties || {};
+      if (String(p.housenumber || '') !== String(dir.num)) return;
+      if (!coincideCalle(p.street || '', tokens)) return;
+      out.push({
+        lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0],
+        label: p.street + ' ' + p.housenumber + (p.city ? ', ' + p.city : ''),
+        exacto: true,
+        calidad: 2,
+        extra: palabrasExtra(p.street || '', tokens),
+        score: 100
+      });
+    });
+    return out;
+  });
+}
+
+// Resuelve "calle + número" a alternativas del mapa (comuna + cuadrante +
+// coordenada exacta). Promesa con [] si no se pudo ubicar con precisión.
+function geocodificarNumeracion(q, comunaSel){
+  var dir = parseDireccionConNumero(q);
+  if (!dir) return Promise.resolve([]);
+  // Corrección del usuario: también en el autocompletado y antes que OpenStreetMap.
+  var corregidaUsuario = buscarCorreccion(q);
+  if (corregidaUsuario) return Promise.resolve([corregidaUsuario]);
+  var verificada = buscarVerificada(dir);
+  if (verificada) return Promise.resolve([verificada]);
+
+  var cacheKey = 'num__' + normDir(q) + '__' + (dir.comuna || comunaSel || '');
+  if (geoLocalCache[cacheKey]) return Promise.resolve(rehidratarAlts(geoLocalCache[cacheKey]));
+
+  var comunaPref = dir.comuna || comunaSel;
+  // Direcciones exactas descargadas y validadas de OSM (assets/js/direcciones-osm.js):
+  // con la comuna escrita se responde al instante; si no, compiten con las
+  // demás fuentes para no ocultar la misma calle + número en otra comuna.
+  var locales = direccionesLocales(dir);
+  if (dir.comuna && locales.length) return Promise.resolve(locales);
+  var consultas = [Promise.resolve(locales.map(function(a){ return a.cand; })), geoArcgis(dir, dir.comuna), geoPhoton(dir, comunaPref), interpolarConAnclas(dir, comunaPref)];
+  // Si el usuario no escribió comuna, consultar la misma calle + número en
+  // TODAS las comunas (La Serena, Coquimbo, Vicuña, Paihuano, Andacollo):
+  // solo quedan las que realmente tienen esa numeración, y la del selector
+  // aparece primero.
+  if (!dir.comuna) {
+    Object.keys(COMUNA_CENTROS).forEach(function(ck){ consultas.push(geoArcgis(dir, ck)); });
+  }
+
+  return Promise.all(consultas).then(function(listas){
+    var cands = [].concat.apply([], listas.map(function(l){ return l || []; }));
+    var allCuads = initCuadrantesCache();
+    var comunas = ['coquimbo','serena','vicuna','paihuano','andacollo'];
+    var alts = [];
+    cands.forEach(function(cd){
+      for (var c = 0; c < comunas.length; c++) {
+        var ck = comunas[c];
+        if (dir.comuna && ck !== dir.comuna) continue;
+        var cuad = (allCuads[ck] || []).find(function(it){ return enItem(cd.lat, cd.lng, it); });
+        if (!cuad) continue;
+        // Misma dirección (≈ <60 m) ya incluida: quedarse con la más exacta.
+        var dup = alts.find(function(a){
+          return a.comuna === ck && Math.abs(a.lat - cd.lat) < 0.0006 && Math.abs(a.lng - cd.lng) < 0.0006;
+        });
+        if (dup) {
+          if (cd.calidad > dup.calidad) {
+            dup.lat = cd.lat; dup.lng = cd.lng; dup.exacto = cd.exacto; dup.calidad = cd.calidad;
+          }
+          break;
+        }
+        var label = cd.label + (cd.label.indexOf(metaComuna(ck).txt) === -1 ? ', ' + metaComuna(ck).txt : '');
+        alts.push({
+          comuna: ck,
+          cuad: cuad,
+          cuadTxt: (/^\d+$/.test(cuad.n) ? 'Cuadrante N° ' + cuad.n : cuad.sector),
+          lat: cd.lat,
+          lng: cd.lng,
+          exacto: cd.exacto,
+          calidad: cd.calidad || 0,
+          precision: cd.precision,
+          extra: cd.extra || 0,
+          score: cd.score,
+          zoom: 18,
+          display: label,
+          displayRoad: label
+        });
+        break;
+      }
+    });
+    alts.sort(function(a, b){
+      if (a.comuna === comunaPref && b.comuna !== comunaPref) return -1;
+      if (b.comuna === comunaPref && a.comuna !== comunaPref) return 1;
+      // Una dirección REAL registrada gana a una estimada aunque el nombre
+      // tenga una palabra más ("Emilio Bello 918" -> Emilio Bello Codesido 918,
+      // no el "Pasaje Emilio Bello" extrapolado). Nombres con 2+ palabras de
+      // más ("Raúl Marín Balmaceda") siguen quedando después.
+      return ((a.extra > 1) - (b.extra > 1)) || (b.calidad - a.calidad) ||
+             (a.extra - b.extra) || (b.score - a.score);
+    });
+    // Descartar números extrapolados a <300 m de una dirección real de la
+    // misma comuna: son estimaciones de ArcGIS sobre la misma cuadra.
+    alts = alts.filter(function(a){
+      if (a.calidad > 0) return true;
+      return !alts.some(function(r){
+        return r.calidad === 2 && r.comuna === a.comuna &&
+          Math.abs(r.lat - a.lat) < 0.003 && Math.abs(r.lng - a.lng) < 0.003;
+      });
+    });
+    // Máximo 6 alternativas para no saturar la lista.
+    alts = alts.slice(0, 6);
+    if (alts.length) {
+      // Guardar sin referencias circulares (los cuadrantes tienen capas Leaflet).
+      saveGeoCache(cacheKey, alts.map(function(a){
+        var o = {}; for (var k in a) if (k !== 'cuad') o[k] = a[k];
+        o.cuadRef = { comuna: a.comuna, cod: a.cuad.cod };
+        return o;
+      }));
+    }
+    return alts;
+  });
+}
+
+// Busca calle + número en las direcciones OSM validadas (todas las comunas cargadas).
+function direccionesLocales(dir){
+  var D = window.OS10_DIRECCIONES_OSM;
+  if (!D) return [];
+  var tk = tokensCalle(dir.calle), num = String(dir.num), out = [];
+  var allCuads = initCuadrantesCache();
+  Object.keys(COMUNA_CENTROS).forEach(function(ck){
+    if (dir.comuna && ck !== dir.comuna) return;
+    (D[ck] || []).forEach(function(f){
+      if (String(parseInt(f[2], 10)) !== num || !coincideCalle(f[1], tk)) return;
+      var cuad = (allCuads[ck] || []).find(function(c){ return String(c.cod) === String(f[5]); });
+      if (!cuad) return;
+      var label = f[1] + ' ' + f[2] + ', ' + metaComuna(ck).txt;
+      var cand = { lat: f[3], lng: f[4], label: label, exacto: true, calidad: 2, precision: 'osm',
+                   extra: palabrasExtra(f[1], tk), score: 102 };
+      out.push({ comuna: ck, cand: cand });
+    });
+  });
+  // Prioriza el nombre más parecido a lo escrito ("Balmaceda" antes que "Raúl Marín Balmaceda").
+  out.sort(function(a, b){ return a.cand.extra - b.cand.extra; });
+  var mejorExtra = out.length ? out[0].cand.extra : 0;
+  return out.filter(function(a){ return a.cand.extra === mejorExtra; }).map(function(a){
+    var alt = candidatosAAlternativas([a.cand], a.comuna)[0];
+    return alt ? { comuna: a.comuna, cand: a.cand, alt: alt } : null;
+  }).filter(Boolean).map(function(a){ var o = a.alt; o.cand = a.cand; return o; });
+}
+
+// Dirección verificada en terreno (assets/js/cuadrantes-catalogo.js): misma
+// calle (por palabras) y mismo número; respeta la comuna si se escribió.
+function buscarVerificada(dir){
+  var lista = window.OS10_DIRECCIONES_VERIFICADAS || [];
+  var tk = tokensCalle(dir.calle);
+  var allCuads = initCuadrantesCache();
+  for (var i = 0; i < lista.length; i++) {
+    var v = lista[i];
+    if (String(v.num) !== String(dir.num)) continue;
+    if (dir.comuna && v.comuna !== dir.comuna) continue;
+    var tv = tokensCalle(v.calle);
+    if (!tk.length || tk.join(' ') !== tv.join(' ')) continue;
+    var cuad = (allCuads[v.comuna] || []).find(function(it){ return enItem(v.lat, v.lng, it); });
+    if (!cuad) continue;
+    return {
+      comuna: v.comuna, cuad: cuad,
+      cuadTxt: (/^\d+$/.test(cuad.n) ? 'Cuadrante N° ' + cuad.n : cuad.sector),
+      lat: v.lat, lng: v.lng, exacto: true, calidad: 3, extra: 0, score: 100, zoom: 18,
+      display: v.nombre, displayRoad: v.nombre
+    };
+  }
+  return null;
+}
+
+// Reconstruye alternativas guardadas en caché (sessionStorage) con sus cuadrantes.
+function rehidratarAlts(alts){
+  var allCuads = initCuadrantesCache();
+  return (alts || []).map(function(a){
+    if (a.cuad || !a.cuadRef) return a;
+    var o = {}; for (var k in a) o[k] = a[k];
+    o.cuad = (allCuads[a.cuadRef.comuna] || []).find(function(c){ return String(c.cod) === String(a.cuadRef.cod); });
+    return o;
+  }).filter(function(a){ return a.cuad; });
+}
+
+// =============================================================
+// MOTOR DE DIRECCIONES (lógica tipo Google Maps, adaptada a OS10)
+// -------------------------------------------------------------
+// Orden de resolución:
+//   1. Corrección guardada por el usuario en este dispositivo.
+//   2. Limpieza: abreviaturas (Av., Pje., Gral.…), depto/casa/block.
+//   3. Texto libre ("frente al SAPU…") -> IA interpreta (nunca da coordenadas).
+//   4. Esquinas ("Balmaceda con Cienfuegos").
+//   5. Calle + número: verificadas > exacta > interpolada > anclas propias.
+//   6. Ortografía: se corrige contra la base de 5.180 calles ("Aldunte").
+//   7. Lugares (SAPU, colegios, malls) y, al final, Nominatim.
+//   8. Si nada funcionó, la IA reinterpreta el texto una vez.
+// Cada resultado lleva su nivel de precisión, visible en el popup.
+// =============================================================
+var notaBusqueda = null;      // "Quisiste decir…" / "Interpretado por IA…"
+var busquedaActual = null;    // { orig, iaUsada }
+
+var ABREVIATURAS = [
+  [/\bavda?\b\.?/gi, 'Avenida '], [/\bav\b\.?/gi, 'Avenida '],
+  [/\b(?:pje|psje|pj)\b\.?/gi, 'Pasaje '], [/\bclle\b\.?/gi, 'Calle '],
+  [/\bgral\b\.?/gi, 'General '], [/\bpdte\b\.?/gi, 'Presidente '],
+  [/\bsta\b\.?/gi, 'Santa '], [/\bsto\b\.?/gi, 'Santo '], [/\bstgo\b\.?/gi, 'Santiago '],
+  [/\btte\b\.?/gi, 'Teniente '], [/\bcap\b\.?/gi, 'Capitán '], [/\bcmdte\b\.?/gi, 'Comandante '],
+  [/\bcnel\b\.?/gi, 'Coronel '], [/\bsgto\b\.?/gi, 'Sargento '], [/\bdr\b\.?/gi, 'Doctor '],
+  [/\bprof\b\.?/gi, 'Profesor '], [/\bmons\b\.?/gi, 'Monseñor '], [/\bfco\b\.?/gi, 'Francisco ']
+];
+
+// Quita lo que no ayuda a ubicar (depto, casa, block, "s/n", país/región)
+// y expande abreviaturas. "Av. Aldunate 1416 depto 302" -> "Avenida Aldunate 1416".
+function limpiarDireccion(q){
+  var t = ' ' + String(q || '') + ' ';
+  t = t.replace(/\b(?:depto|dpto|dto|depa|departamento|of|oficina|local|block|blk|torre|piso)\b\.?\s*[#n°º.]*\s*[a-z0-9-]+/gi, ' ');
+  t = t.replace(/\b(?:casa|lote|sitio)\b\.?\s*[#n°º.]*\s*\d+[a-z]?\b/gi, ' ');
+  t = t.replace(/\bs\s*\/\s*n\b/gi, ' ');
+  t = t.replace(/,?\s*(?:regi[oó]n de coquimbo|iv regi[oó]n|chile)\b/gi, ' ');
+  ABREVIATURAS.forEach(function(a){ t = t.replace(a[0], a[1]); });
+  return t.replace(/\s+,/g, ',').replace(/\s+/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
+}
+
+// Distancia de edición (Levenshtein) con corte temprano.
+function distEdicion(a, b, max){
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  var prev = [], i, j;
+  for (j = 0; j <= b.length; j++) prev[j] = j;
+  for (i = 1; i <= a.length; i++) {
+    var cur = [i], minFila = i;
+    for (j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+      if (cur[j] < minFila) minFila = cur[j];
+    }
+    if (minFila > max) return max + 1;
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+// Corrige el nombre de la calle contra la base de calles (assets/js/calles-db.js),
+// como el "Quisiste decir" de Google. Devuelve null si ya existe tal cual o si
+// no hay una calle suficientemente parecida.
+function corregirCalle(calle, comunaPref){
+  var db = window.OS10_CALLES_DB;
+  var tk = tokensCalle(calle);
+  if (!db || !tk.length) return null;
+  var best = null, bestCosto = Infinity, bestLargo = Infinity, bestEnComuna = false;
+  // ¿La calle existe en la comuna preferida? (desempate "Cordoves" -> Gregorio
+  // Cordovez de La Serena, no Ezequiel Cordovez de Coquimbo).
+  var enComuna = function(st){
+    for (var k = 0; k < st[3].length; k += 3) if (db.cuads[st[3][k]].c === comunaPref) return true;
+    return false;
+  };
+  for (var i = 0; i < db.streets.length; i++) {
+    var st = db.streets[i];
+    var palabras = st[0].split(' ');
+    var costo = 0, ok = true;
+    for (var k = 0; k < tk.length && ok; k++) {
+      var permitido = tk[k].length <= 4 ? 0 : tk[k].length <= 7 ? 1 : 2;
+      var min = permitido + 1;
+      for (var w = 0; w < palabras.length && min > 0; w++) {
+        var d = distEdicion(tk[k], palabras[w], permitido);
+        if (d < min) min = d;
+      }
+      if (min > permitido) ok = false; else costo += min;
+    }
+    if (!ok) continue;
+    if (costo === 0) return null;   // la calle existe escrita así
+    var ec = enComuna(st);
+    if (costo < bestCosto || (costo === bestCosto && ((ec && !bestEnComuna) ||
+        (ec === bestEnComuna && palabras.length < bestLargo)))) {
+      best = st; bestCosto = costo; bestLargo = palabras.length; bestEnComuna = ec;
+    }
+  }
+  return best ? { nombre: best[1], costo: bestCosto } : null;
+}
+
+// Esquinas: "Balmaceda con Cienfuegos", "Aldunate esquina Borgoño", "A & B".
+function parseInterseccion(q){
+  var t = String(q || '').replace(/^\s*(?:esquina|esq\.?)\s+/i, '');
+  var m = t.match(/^(.+?)\s+(?:con|esquina|esq\.?|&|\/)\s+(.+?)(?:\s*,\s*([^,\d]+))?$/i);
+  if (!m) return null;
+  var a = m[1].trim(), b = m[2].trim();
+  if (/\d{2,}/.test(a) || /\d{2,}/.test(b)) return null;   // es una numeración, no una esquina
+  if (!tokensCalle(a).length || !tokensCalle(b).length) return null;
+  return { a: a, b: b, comuna: comunaEnTexto(m[3] || '') || comunaEnTexto(b) };
+}
+
+// Convierte candidatos {lat,lng,label,calidad,precision…} en alternativas del
+// mapa (comuna + cuadrante), sin duplicar puntos a <60 m en la misma comuna.
+function candidatosAAlternativas(cands, soloComuna){
+  var allCuads = initCuadrantesCache();
+  var comunas = ['coquimbo','serena','vicuna','paihuano','andacollo'];
+  var alts = [];
+  cands.forEach(function(cd){
+    for (var c = 0; c < comunas.length; c++) {
+      var ck = comunas[c];
+      if (soloComuna && ck !== soloComuna) continue;
+      var cuad = (allCuads[ck] || []).find(function(it){ return enItem(cd.lat, cd.lng, it); });
+      if (!cuad) continue;
+      var dup = alts.find(function(a){
+        return a.comuna === ck && Math.abs(a.lat - cd.lat) < 0.0006 && Math.abs(a.lng - cd.lng) < 0.0006;
+      });
+      if (dup) {
+        if ((cd.calidad || 0) > (dup.calidad || 0)) {
+          dup.lat = cd.lat; dup.lng = cd.lng; dup.calidad = cd.calidad; dup.precision = cd.precision;
+        }
+        break;
+      }
+      var label = cd.label + (cd.label.indexOf(metaComuna(ck).txt) === -1 ? ', ' + metaComuna(ck).txt : '');
+      alts.push({
+        comuna: ck, cuad: cuad,
+        cuadTxt: (/^\d+$/.test(cuad.n) ? 'Cuadrante N° ' + cuad.n : cuad.sector),
+        lat: cd.lat, lng: cd.lng,
+        exacto: cd.exacto, calidad: cd.calidad || 0, precision: cd.precision,
+        extra: cd.extra || 0, score: cd.score || 0, zoom: 18,
+        display: label, displayRoad: label
+      });
+      break;
+    }
+  });
+  return alts;
+}
+
+function ordenarPorComuna(alts, pref){
+  return alts.sort(function(a, b){
+    if (a.comuna === pref && b.comuna !== pref) return -1;
+    if (b.comuna === pref && a.comuna !== pref) return 1;
+    return (b.calidad - a.calidad) || (b.score - a.score);
+  });
+}
+
+function geocodificarInterseccion(inter, comunaSel){
+  var ta = tokensCalle(inter.a), tb = tokensCalle(inter.b);
+  var comunas = inter.comuna ? [inter.comuna] : Object.keys(COMUNA_CENTROS);
+  var consultas = comunas.map(function(ck){
+    var c = COMUNA_CENTROS[ck];
+    var url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates' +
+      '?f=json&countryCode=CHL&maxLocations=3&outFields=Addr_type&location=' + c[1] + ',' + c[0] +
+      '&SingleLine=' + encodeURIComponent(inter.a + ' & ' + inter.b + ', ' + metaComuna(ck).txt + ', Región de Coquimbo, Chile');
+    return fetchConTimeout(url, 3500).then(function(js){
+      return ((js && js.candidates) || []).filter(function(cd){
+        return (cd.attributes || {}).Addr_type === 'StreetInt' && cd.score >= 85 &&
+          coincideCalle(cd.address, ta) && coincideCalle(cd.address, tb);
+      }).map(function(cd){
+        return {
+          lat: cd.location.y, lng: cd.location.x, calidad: 2, precision: 'esquina', score: cd.score,
+          label: String(cd.address || '').split(',').slice(0, 2).join(',').replace(/Paiguano/g, 'Paihuano')
+        };
+      });
+    });
+  });
+  return Promise.all(consultas).then(function(listas){
+    var cands = [].concat.apply([], listas.map(function(l){ return l || []; }));
+    return ordenarPorComuna(candidatosAAlternativas(cands, inter.comuna), inter.comuna || comunaSel).slice(0, 6);
+  });
+}
+
+// Interpolación PROPIA (como RANGE_INTERPOLATED de Google): toma los números
+// reales conocidos de la misma calle en OSM (locales, portales) y ubica el
+// número buscado entre los dos más cercanos. Sirve cuando ArcGIS no tiene la
+// numeración o solo la extrapola.
+function interpolarConAnclas(dir, comunaKey){
+  if (!comunaKey || !COMUNA_VIEWBOXES[comunaKey]) return Promise.resolve([]);
+  var vb = COMUNA_VIEWBOXES[comunaKey].split(',').map(parseFloat);
+  var bbox = [Math.min(vb[0], vb[2]), Math.min(vb[1], vb[3]), Math.max(vb[0], vb[2]), Math.max(vb[1], vb[3])].join(',');
+  var url = 'https://photon.komoot.io/api/?limit=50&bbox=' + bbox +
+    '&q=' + encodeURIComponent(dir.calle + ' ' + metaComuna(comunaKey).txt);
+  var tokens = tokensCalle(dir.calle), n = parseInt(dir.num, 10);
+  return fetchConTimeout(url, 3500).then(function(js){
+    var anclas = [];
+    // Anclas locales (direcciones OSM validadas) + las que entregue Photon.
+    ((window.OS10_DIRECCIONES_OSM || {})[comunaKey] || []).forEach(function(f){
+      if (coincideCalle(f[1], tokens)) anclas.push({ n: parseInt(f[2], 10), lat: f[3], lng: f[4], calle: f[1] });
+    });
+    ((js && js.features) || []).forEach(function(f){
+      var p = f.properties || {};
+      var hn = parseInt(String(p.housenumber || '').replace(/[^\d].*$/, ''), 10);
+      if (isNaN(hn) || !coincideCalle(p.street || '', tokens)) return;
+      anclas.push({ n: hn, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], calle: p.street });
+    });
+    if (!anclas.length) return [];
+    // Con el número exacto registrado ya responde direccionesLocales(); aquí se estima.
+    var bajo = null, alto = null;
+    anclas.forEach(function(a){
+      if (a.n <= n && (!bajo || a.n > bajo.n)) bajo = a;
+      if (a.n >= n && (!alto || a.n < alto.n)) alto = a;
+    });
+    var lat, lng, detalle;
+    if (bajo && alto && bajo.n !== alto.n) {
+      // Las anclas deben estar en la misma calle y a menos de ~3 km entre sí.
+      if (Math.abs(bajo.lat - alto.lat) + Math.abs(bajo.lng - alto.lng) > 0.03) return [];
+      var t = (n - bajo.n) / (alto.n - bajo.n);
+      lat = bajo.lat + (alto.lat - bajo.lat) * t;
+      lng = bajo.lng + (alto.lng - bajo.lng) * t;
+      detalle = 'entre N° ' + bajo.n + ' y N° ' + alto.n;
+    } else {
+      var cerca = bajo && alto ? bajo : (bajo || alto);
+      if (Math.abs(cerca.n - n) > 120) return [];   // muy lejos para estimar
+      lat = cerca.lat; lng = cerca.lng;
+      detalle = cerca.n === n ? 'número registrado' : 'cerca del N° ' + cerca.n;
+    }
+    var nombre = (bajo || alto).calle;
+    return [{
+      lat: lat, lng: lng, exacto: false, calidad: 1, precision: 'anclas', score: 90,
+      extra: palabrasExtra(nombre, tokens),
+      label: nombre + ' ' + dir.num + ' (estimada ' + detalle + ')'
+    }];
+  });
+}
+
+// Lugares por nombre (SAPU, colegios, comisarías, malls…). OSM (Photon)
+// suele ubicar el edificio exacto; ArcGIS complementa lo que OSM no tiene.
+function geoLugar(q, comunaSel){
+  var comunaTxt = comunaEnTexto(q);
+  var c = COMUNA_CENTROS[comunaTxt || comunaSel || 'serena'];
+  var tokens = tokensCalle(q).filter(function(w){ return !comunaEnTexto(w); });
+  if (!tokens.length) return Promise.resolve([]);
+  // El nombre del lugar debe contener al menos la mitad de las palabras escritas.
+  var nombreCoincide = function(nombre){
+    var pal = normDir(nombre || '').split(' ');
+    return tokens.filter(function(w){ return pal.indexOf(w) !== -1; }).length * 2 >= tokens.length;
+  };
+  var urlArc = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates' +
+    '?f=json&countryCode=CHL&maxLocations=6&outFields=Addr_type,PlaceName,Place_addr' +
+    '&location=' + c[1] + ',' + c[0] +
+    '&SingleLine=' + encodeURIComponent(q + ', Región de Coquimbo, Chile');
+  var urlOsm = 'https://photon.komoot.io/api/?limit=10&bbox=-71.7,-30.6,-70.2,-29.5&lat=' + c[0] + '&lon=' + c[1] +
+    '&q=' + encodeURIComponent(q);
+  var pArc = fetchConTimeout(urlArc, 3500).then(function(js){
+    return ((js && js.candidates) || []).filter(function(cd){
+      var a = cd.attributes || {};
+      return a.Addr_type === 'POI' && cd.score >= 80 && nombreCoincide(a.PlaceName);
+    }).map(function(cd){
+      var a = cd.attributes;
+      var dirLugar = String(a.Place_addr || '').split(',').slice(0, 2).join(',');
+      return { lat: cd.location.y, lng: cd.location.x, calidad: 2, precision: 'lugar', score: cd.score, fuente: 'arcgis',
+               label: a.PlaceName + (dirLugar ? ' — ' + dirLugar : '') };
+    });
+  });
+  var pOsm = fetchConTimeout(urlOsm, 3500).then(function(js){
+    return ((js && js.features) || []).filter(function(f){
+      var p = f.properties || {};
+      return p.osm_key !== 'highway' && p.osm_key !== 'place' && p.osm_key !== 'boundary' && nombreCoincide(p.name);
+    }).map(function(f){
+      var p = f.properties;
+      var dirLugar = p.street ? p.street + (p.housenumber ? ' ' + p.housenumber : '') : '';
+      return { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], calidad: 2, precision: 'lugar', score: 101, fuente: 'osm',
+               label: p.name + (dirLugar ? ' — ' + dirLugar : '') };
+    });
+  });
+  return Promise.all([pOsm, pArc]).then(function(r){
+    var osm = r[0] || [], arc = r[1] || [];
+    // Un POI de ArcGIS a <800 m de uno de OSM es el mismo lugar mal ubicado: se descarta.
+    arc = arc.filter(function(a){
+      return !osm.some(function(o){ return Math.abs(o.lat - a.lat) < 0.008 && Math.abs(o.lng - a.lng) < 0.008; });
+    });
+    return ordenarPorComuna(candidatosAAlternativas(osm.concat(arc), comunaTxt), comunaTxt || comunaSel).slice(0, 6);
+  });
+}
+
+// ---- Inteligencia artificial (Gemini vía /api/gemini, ya usado por el chatbot)
+// La IA SOLO interpreta el texto (calle, número, esquina, lugar, comuna). Las
+// coordenadas siempre salen de los geocodificadores y de los polígonos de
+// cuadrantes, así la IA no puede "inventar" una ubicación.
+var iaHabilitada = !/github\.io$/i.test(location.hostname) && location.protocol !== 'file:';
+
+function pareceTextoLibre(q){
+  var t = normDir(q);
+  return /\b(frente|enfrente|al lado|lado de|cerca|cercano|entre|pasado|antes de|despues de|detras|atras|altura|junto|costado|cuadra|donde|por fuera|afuera|interior|camino a)\b/.test(t) ||
+         t.split(' ').length >= 8;
+}
+
+function interpretarConIA(q){
+  if (!iaHabilitada) return Promise.resolve(null);
+  var key = 'ia__' + normDir(q);
+  if (geoLocalCache[key]) return Promise.resolve(geoLocalCache[key]);
+  var prompt =
+    'Eres un asistente de Carabineros (OS10) que interpreta direcciones de la Región de Coquimbo, Chile ' +
+    '(comunas: La Serena, Coquimbo, Vicuña, Paihuano, Andacollo). Interpreta el texto del usuario y ' +
+    'responde SOLO un JSON con estas claves: ' +
+    '{"tipo":"direccion|esquina|lugar|calle|desconocido","calle":"nombre oficial completo de la calle o null",' +
+    '"numero":"numeración domiciliaria o null","calle2":"segunda calle si es esquina o null",' +
+    '"lugar":"nombre del lugar/edificio/institución si se menciona o null",' +
+    '"comuna":"serena|coquimbo|vicuna|paihuano|andacollo o null"}. ' +
+    'Corrige errores de ortografía y abreviaturas. Si mencionan un lugar de referencia ("frente al SAPU X"), ' +
+    'tipo="lugar". No inventes números ni coordenadas. Texto: "' + String(q).replace(/"/g, "'") + '"';
+  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timer = controller ? setTimeout(function(){ controller.abort(); }, 8000) : null;
+  return fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: controller ? controller.signal : undefined,
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0, responseMimeType: 'application/json' }
+    })
+  }).then(function(r){
+    if (timer) clearTimeout(timer);
+    if (!r.ok) { if (r.status === 404 || r.status >= 500) iaHabilitada = false; return null; }
+    return r.json();
+  }).then(function(js){
+    var txt = js && js.candidates && js.candidates[0] && js.candidates[0].content &&
+              js.candidates[0].content.parts && js.candidates[0].content.parts[0].text;
+    if (!txt) return null;
+    var out = JSON.parse(txt.replace(/^```(?:json)?|```$/g, '').trim());
+    if (!out || out.tipo === 'desconocido') return null;
+    saveGeoCache(key, out);
+    return out;
+  }).catch(function(){ if (timer) clearTimeout(timer); return null; });
+}
+
+// Texto de búsqueda reconstruido a partir de la interpretación de la IA.
+function textoDesdeIA(r){
+  var com = r.comuna && COMUNA_CENTROS[r.comuna] ? ', ' + metaComuna(r.comuna).txt : '';
+  if (r.tipo === 'esquina' && r.calle && r.calle2) return r.calle + ' con ' + r.calle2 + com;
+  if (r.tipo === 'lugar' && r.lugar) return r.lugar + com;
+  if (r.calle && r.numero) return r.calle + ' ' + String(r.numero).replace(/[^\d]/g, '') + com;
+  if (r.calle) return r.calle + com;
+  if (r.lugar) return r.lugar + com;
+  return null;
+}
+
+function resolverConIA(qOrig){
+  busquedaActual.iaUsada = true;
+  res('<div class="res-loading"><span class="res-loading-spinner"></span> 🤖 Interpretando la dirección con IA…</div>');
+  return interpretarConIA(qOrig).then(function(r){
+    if (!busquedaActual || busquedaActual.orig !== qOrig) return;
+    var texto = r && textoDesdeIA(r);
+    if (!texto || normDir(texto) === normDir(qOrig)) { resolverDireccion(qOrig, { sinIA: true }); return; }
+    notaBusqueda = '🤖 Interpretado por IA como: <b>' + escapeHtml(texto) + '</b>';
+    resolverDireccion(texto, { sinIA: true, orig: qOrig });
+  });
+}
+
+// ---- Correcciones del usuario (como "Sugerir un cambio" de Google Maps)
+// Correcciones del equipo (compartidas en Netlify, /api/correcciones) + las de
+// este dispositivo. Si la misma dirección está en ambas, manda la del dispositivo.
+var correccionesEquipo = {};
+var servidorCorrecciones = iaHabilitada;   // solo existe en Netlify (no en GitHub Pages)
+
+function leerCorreccionesLocales(){
+  try { return JSON.parse(localStorage.getItem('os10_correcciones') || '{}') || {}; } catch(e){ return {}; }
+}
+function leerCorrecciones(){
+  var out = {}, k, loc = leerCorreccionesLocales();
+  for (k in correccionesEquipo) { out[k] = correccionesEquipo[k]; out[k].origen = 'equipo'; }
+  for (k in loc) { out[k] = loc[k]; out[k].origen = 'local'; }
+  return out;
+}
+function cargarCorreccionesEquipo(){
+  if (!servidorCorrecciones) return;
+  fetch('/api/correcciones', { cache: 'no-store' })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(js){ if (js && typeof js === 'object') correccionesEquipo = js; else servidorCorrecciones = false; })
+    .catch(function(){ servidorCorrecciones = false; });
+}
+// Contraseña del equipo para corregir: la valida SOLO el servidor
+// (/api/correcciones) y se recuerda mientras dure la sesión del navegador.
+function pinGuardado(){ try { return sessionStorage.getItem('os10_pin_correccion') || ''; } catch(e){ return ''; } }
+function guardarPin(v){ try { if (v) sessionStorage.setItem('os10_pin_correccion', v); else sessionStorage.removeItem('os10_pin_correccion'); } catch(e){} }
+
+// POST al servidor. Promesa con 'ok' | 'pin' (contraseña incorrecta) |
+// 'bloqueo' (demasiados intentos) | 'error' (sin conexión / sin servidor).
+function postCorrecciones(body){
+  if (!servidorCorrecciones) return Promise.resolve('error');
+  return fetch('/api/correcciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function(r){ return r.ok ? 'ok' : r.status === 401 ? 'pin' : r.status === 429 ? 'bloqueo' : 'error'; })
+    .catch(function(){ return 'error'; });
+}
+
+// Guarda la corrección para TODO el equipo (exige la contraseña).
+function compartirCorreccion(clave, c){
+  var body = { pin: pinGuardado(), clave: clave, lat: c.lat, lng: c.lng, comuna: c.comuna, nombre: c.nombre, firma: c.firma };
+  return postCorrecciones(body).then(function(r){ if (r === 'ok') correccionesEquipo[clave] = c; return r; });
+}
+
+var MSG_CORRECCION = {
+  pin: '❌ Contraseña incorrecta',
+  bloqueo: '⛔ Demasiados intentos fallidos. Espera una hora e inténtalo de nuevo.',
+  error: '⚠️ No se pudo conectar con el servidor. La corrección solo funciona en os10coquimbo.cl y con internet.'
+};
+function claveCorreccion(q){ return normDir(limpiarDireccion(q)); }
+
+// Calle (palabras, con ortografía corregida) + número + comuna de un texto,
+// para reconocer la corrección aunque se escriba distinto
+// ("Lautaro 841" = "lautaro 841, La Serena" = "Lautaro N° 841").
+function firmaDireccion(q){
+  var dir = parseDireccionConNumero(limpiarDireccion(q));
+  if (!dir) return null;
+  var corr = corregirCalle(dir.calle, dir.comuna || ciudad);
+  return { calle: tokensCalle(corr ? corr.nombre : dir.calle).join(' '), num: String(parseInt(dir.num, 10)), comuna: dir.comuna };
+}
+
+// Las correcciones del usuario mandan sobre TODO (OpenStreetMap, ArcGIS, IA):
+// primero por texto idéntico y, si no, por calle + número (+ comuna si se escribió).
+function buscarCorreccion(q){
+  var todas = leerCorrecciones();
+  var c = todas[claveCorreccion(q)];
+  if (!c) {
+    var f = firmaDireccion(q);
+    if (f && f.calle) {
+      Object.keys(todas).some(function(k){
+        var x = todas[k];
+        if (!x.firma || x.firma.num !== f.num) return false;
+        if (f.comuna && x.comuna !== f.comuna) return false;
+        var a = x.firma.calle.split(' '), b = f.calle.split(' ');
+        // Misma calle: todas las palabras escritas están en la corregida, o al revés.
+        var igual = b.every(function(w){ return a.indexOf(w) !== -1; }) || a.every(function(w){ return b.indexOf(w) !== -1; });
+        if (igual) c = x;
+        return igual;
+      });
+    }
+  }
+  if (!c) return null;
+  var cuad = (initCuadrantesCache()[c.comuna] || []).find(function(it){ return enItem(c.lat, c.lng, it); });
+  if (!cuad) return null;
+  return {
+    comuna: c.comuna, cuad: cuad,
+    cuadTxt: (/^\d+$/.test(cuad.n) ? 'Cuadrante N° ' + cuad.n : cuad.sector),
+    lat: c.lat, lng: c.lng, calidad: 3, precision: c.origen === 'equipo' ? 'equipo' : 'corregida', zoom: 18,
+    display: c.nombre, displayRoad: c.nombre
+  };
+}
+
+function tarjetaCorreccion(icono, titulo, cuerpo){
+  res('<div class="res-card"><div class="res-title-row"><span class="res-icon">' + icono + '</span>' +
+      '<span class="res-title">' + titulo + '</span>' +
+      '<button class="res-close-btn" onclick="cerrarResultado()" title="Cerrar">✕</button></div>' +
+      (cuerpo ? '<div class="res-body">' + cuerpo + '</div>' : '') + '</div>');
+}
+
+// Paso 1: pedir la contraseña (solo la primera vez en la sesión).
+function iniciarCorreccion(ev){
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  if (!pin || !pin.dragging) return;
+  pin.closePopup();
+  if (!servidorCorrecciones) { tarjetaCorreccion('⚠️', 'Corrección no disponible', MSG_CORRECCION.error); return; }
+  if (pinGuardado()) { comenzarArrastre(); return; }
+  pedirPin('');
+}
+window.iniciarCorreccion = iniciarCorreccion;
+
+function pedirPin(error){
+  tarjetaCorreccion('🔒', 'Contraseña para corregir ubicaciones',
+    '<form onsubmit="window.verificarPin(event)" style="display:flex;gap:6px;margin-top:4px;">' +
+      '<input id="corr-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="Contraseña" ' +
+        'style="flex:1;min-width:0;padding:7px 9px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px;">' +
+      '<button type="submit" class="popup-corr-btn" style="font-size:13px;">Continuar</button>' +
+    '</form>' +
+    (error ? '<div style="margin-top:6px;color:#b91c1c;font-size:12px;font-weight:700;">' + error + '</div>' : ''));
+  setTimeout(function(){ var i = document.getElementById('corr-pin'); if (i) i.focus(); }, 50);
+}
+
+function verificarPin(ev){
+  if (ev && ev.preventDefault) ev.preventDefault();
+  var input = document.getElementById('corr-pin');
+  var v = input ? input.value.trim() : '';
+  if (!v) return;
+  tarjetaCorreccion('⏳', 'Verificando contraseña…');
+  postCorrecciones({ accion: 'verificar', pin: v }).then(function(r){
+    if (r === 'ok') { guardarPin(v); comenzarArrastre(); return; }
+    pedirPin(MSG_CORRECCION[r]);
+  });
+}
+window.verificarPin = verificarPin;
+
+// Paso 2: arrastrar el pin. Paso 3: se guarda para todo el equipo.
+function comenzarArrastre(){
+  var original = pin.getLatLng();
+  pin.dragging.enable();
+  tarjetaCorreccion('✏️', 'Arrastra el pin azul hasta la ubicación correcta y suéltalo');
+  pin.off('dragend').on('dragend', function(){
+    var ll = pin.getLatLng();
+    var allCuads = initCuadrantesCache(), comuna = null, cuad = null;
+    Object.keys(allCuads).some(function(ck){
+      cuad = allCuads[ck].find(function(it){ return enItem(ll.lat, ll.lng, it); });
+      if (cuad) { comuna = ck; return true; }
+      return false;
+    });
+    pin.dragging.disable();
+    if (!cuad) { pin.setLatLng(original); tarjetaCorreccion('❌', 'Ese punto está fuera de los cuadrantes'); return; }
+    // Lo que está en el buscador (también si se eligió una sugerencia de la lista).
+    var q = (document.getElementById('q').value || '').trim() || (busquedaActual && busquedaActual.orig) || window.currentQuery || '';
+    var nombre = limpiarDireccion(q);
+    if (comunaEnTexto(nombre) !== comuna) nombre += ', ' + metaComuna(comuna).txt;
+    var clave = claveCorreccion(q);
+    var nueva = { lat: +ll.lat.toFixed(6), lng: +ll.lng.toFixed(6), comuna: comuna, nombre: nombre, firma: firmaDireccion(q) };
+    tarjetaCorreccion('⏳', 'Guardando para todo el equipo…');
+    compartirCorreccion(clave, nueva).then(function(r){
+      if (r !== 'ok') {
+        // Sin contraseña válida o sin servidor no se guarda nada: el pin vuelve.
+        pin.setLatLng(original);
+        if (r === 'pin') { guardarPin(''); pedirPin(MSG_CORRECCION.pin); }
+        else tarjetaCorreccion('⚠️', 'No se guardó la corrección', MSG_CORRECCION[r]);
+        return;
+      }
+      var todas = leerCorreccionesLocales();
+      todas[clave] = nueva;
+      try { localStorage.setItem('os10_correcciones', JSON.stringify(todas)); } catch(e){}
+      window.estadoCorreccion = 'compartida';
+      renderAlternativasUI(q, [buscarCorreccion(q)], 0);
+    });
+  });
+}
+
+// Etiqueta de precisión del resultado (Google no la muestra; aquí sí).
+function etiquetaPrecision(alt){
+  var p = alt.precision, c = alt.calidad;
+  if (p === 'corregida') return ['✅ Corregida por ti', '#15803d'];
+  if (p === 'equipo') return ['✅ Corregida en terreno (equipo OS10)', '#15803d'];
+  if (c === 3) return ['✅ Verificada en terreno', '#15803d'];
+  if (p === 'esquina') return ['✚ Esquina exacta', '#1d4ed8'];
+  if (p === 'lugar') return ['🏢 Lugar encontrado', '#1d4ed8'];
+  if (p === 'osm') return ['🎯 Registrado OpenStreetMap', '#15803d'];
+  if (c === 2) return ['🎯 Dirección exacta', '#15803d'];
+  if (p === 'anclas') return ['📏 Estimada con números reales de la calle', '#b45309'];
+  if (c === 1) return ['📏 Interpolada en la cuadra', '#b45309'];
+  if (c === 0) return ['≈ Aproximada', '#b91c1c'];
+  if (p === 'calle') return ['🛣️ Tramo de calle (sin numeración)', '#b91c1c'];
+  return null;
+}
+
+// Punto de entrada del motor (después de la búsqueda por N° de cuadrante).
+function resolverDireccion(q, opts){
+  opts = opts || {};
+  var orig = opts.orig || q;
+  var vigente = function(){ return (document.getElementById('q').value || '').trim() === orig; };
+
+  var corr = buscarCorreccion(orig);
+  if (corr) { renderAlternativasUI(orig, [corr], 0); return; }
+
+  var limpio = limpiarDireccion(q);
+  if (!opts.sinIA && iaHabilitada && pareceTextoLibre(limpio)) { resolverConIA(orig); return; }
+
+  var inter = parseInterseccion(limpio);
+  if (inter) {
+    res('<div class="res-loading"><span class="res-loading-spinner"></span> Ubicando la esquina…</div>');
+    geocodificarInterseccion(inter, ciudad).then(function(alts){
+      if (!vigente()) return;
+      if (alts.length) { renderAlternativasUI(orig, alts, 0); return; }
+      // Las calles no se cruzan (o no existe la esquina): mostrar la primera.
+      notaBusqueda = '⚠️ No se encontró la esquina de <b>' + escapeHtml(inter.a) + '</b> con <b>' +
+        escapeHtml(inter.b) + '</b> (no se cruzan). Se muestra ' + escapeHtml(inter.a) + '.';
+      resolverNumero(inter.a + (inter.comuna ? ', ' + metaComuna(inter.comuna).txt : ''));
+    });
+    return;
+  }
+  resolverNumero(limpio);
+
+  function resolverNumero(texto){
+    var dir = parseDireccionConNumero(texto);
+    if (!dir) { buscarCalle(texto); return; }
+    // Calle mal escrita: se corrige ANTES de geocodificar ("Aldunte 1416").
+    var corregida = corregirCalle(dir.calle, dir.comuna || ciudad);
+    if (corregida) {
+      texto = corregida.nombre + ' ' + dir.num + (dir.resto ? ', ' + dir.resto : '');
+      if (!notaBusqueda) notaBusqueda = '🔤 Quisiste decir: <b>' + escapeHtml(corregida.nombre + ' ' + dir.num) + '</b>';
+      dir = parseDireccionConNumero(texto);
+    }
+    res('<div class="res-loading"><span class="res-loading-spinner"></span> Ubicando la numeración exacta…</div>');
+    geocodificarNumeracion(texto, ciudad).then(function(alts){
+      if (!vigente()) return;
+      if (alts.length) { renderAlternativasUI(orig, alts, 0); return; }
+      fallbackSinNumero(texto, dir);
+    }).catch(function(){ if (vigente()) fallbackSinNumero(texto, dir); });
+  }
+
+  // Sin numeración en ninguna fuente: hitos de avenidas o el tramo de la calle.
+  function fallbackSinNumero(texto, dir){
+    if (!checkMilestone(texto, ciudad)) {
+      var calleSugs = mergeMapSugs(buscarCallesMulticomuna(dir.calle), dbHitsToMapSugs(dir.calle))
+        .filter(function(sg){ return !dir.comuna || sg.comuna === dir.comuna; });
+      // Si alguna calle coincide palabra por palabra con lo escrito, quedarse
+      // solo con esas ("Costanera del Río" no debe llevar a "Av. del Mar").
+      var tk = tokensCalle(dir.calle);
+      var exactas = calleSugs.filter(function(sg){ return coincideCalle(sg.street || sg.displayRoad || '', tk); });
+      if (exactas.length) calleSugs = exactas;
+      if (calleSugs.length) {
+        var pref = dir.comuna || ciudad;
+        calleSugs.sort(function(x, y){ return (y.comuna === pref) - (x.comuna === pref); });
+        renderAlternativasUI(orig, calleSugs.map(function(sg){
+          var nombre = (sg.street || sg.displayRoad || '') + ' (N° ' + dir.num + ' aprox., sin numeración exacta), ' + metaComuna(sg.comuna).txt;
+          return { comuna: sg.comuna, cuad: sg.cuad, cuadTxt: sg.cuadTxt, lat: sg.lat, lng: sg.lng, precision: 'calle', display: nombre, displayRoad: nombre };
+        }), 0);
+        return;
+      }
+    }
+    buscarCalle(texto);
+  }
+}
+
+// Construcción de la tarjeta unificada dentro del popup del mapa (el cuadro que dice el cuadrante)
+function buildPopupHtml(alt, activeIdx, keepTrayOpen){
+  var m2 = metaComuna(alt.comuna);
+  var telDigits = String(alt.cuad && alt.cuad.tel || '').replace(/[^\d]/g, '');
+  var telHref = (telDigits.length === 9 ? '+56' + telDigits : telDigits);
+
+  var otherAlts = [];
+  if (window.currentAlternativas && window.currentAlternativas.length > 1) {
+    for (var i = 0; i < window.currentAlternativas.length; i++) {
+      if (i !== activeIdx) {
+        otherAlts.push({ alt: window.currentAlternativas[i], origIdx: i });
+      }
+    }
+  }
+
+  var prec = etiquetaPrecision(alt);
+  var html = '<div class="popup-unified-card">' +
+    '<div class="popup-head-row">' +
+      '<span class="popup-dir-icon">📍</span>' +
+      '<div class="popup-dir-text">' +
+        '<div class="popup-dir-label">Dirección ubicada:</div>' +
+        '<div class="popup-dir-name">' + escapeHtml(alt.display || alt.displayRoad || (alt.cuad && alt.cuad.sector) || 'Ubicación') + '</div>' +
+        (prec ? '<div class="popup-precision" style="color:' + prec[1] + ';border-color:' + prec[1] + ';">' + prec[0] + '</div>' : '') +
+        (notaBusqueda ? '<div class="popup-nota">' + notaBusqueda + '</div>' : '') +
+      '</div>' +
+    '</div>' +
+
+    '<div class="popup-cuad-box" style="border-left: 4px solid ' + m2.border + ';">' +
+      '<div class="popup-cuad-top">' +
+        '<span class="popup-cuad-title">👮 <b>' + alt.cuadTxt + '</b></span>' +
+        '<span class="res-alt-badge badge-' + alt.comuna + '">' + m2.txt + '</span>' +
+      '</div>' +
+      '<div class="popup-cuad-sector">Sector: <b>' + escapeHtml((alt.cuad && alt.cuad.sector) || alt.displayRoad || alt.display) + '</b></div>' +
+      (alt.cuad && alt.cuad.tel ?
+        '<div class="popup-cuad-tel-row">' +
+          '<span class="popup-tel-lbl">Patrulla cuadrante:</span>' +
+          '<a href="tel:' + telHref + '" class="popup-tel-btn">📞 ' + escapeHtml(alt.cuad.tel) + '</a>' +
+        '</div>' : '') +
+    '</div>';
+
+  // Si existen otros cuadrantes o comunas para esta misma dirección:
+  if (otherAlts.length > 0) {
+    var primaryOtherComuna = otherAlts[0].alt.comuna;
+    var mPrimaryOther = metaComuna(primaryOtherComuna);
+    html += '<div class="popup-chevron-bar" onclick="window.togglePopupTray(event)" title="Ver los otros cuadrantes donde existe esta calle">' +
+      '<div class="popup-chevron-label">' +
+        '<span class="res-alt-badge badge-' + primaryOtherComuna + '">' + mPrimaryOther.txt + '</span>' +
+        '<span><b>' + otherAlts.length + ' otro' + (otherAlts.length > 1 ? 's' : '') + ' cuadrante' + (otherAlts.length > 1 ? 's' : '') + '</b></span>' +
+      '</div>' +
+      '<button type="button" class="popup-chevron-btn" onclick="window.togglePopupTray(event)" aria-label="Desplegar otros cuadrantes">' +
+        '<svg class="popup-chevron-svg" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="' + (keepTrayOpen ? 'transform:rotate(180deg);' : '') + '">' +
+          '<path d="M6 9l6 6 6-6"/>' +
+        '</svg>' +
+      '</button>' +
+    '</div>' +
+
+    '<div class="popup-semi-tray" id="popup-semi-tray" style="display:' + (keepTrayOpen ? 'block' : 'none') + ';">' +
+      '<div class="popup-tray-subtitle">Otros cuadrantes con la misma dirección:</div>' +
+      '<div class="popup-tray-list">';
+
+    for (var j = 0; j < otherAlts.length; j++) {
+      var oa = otherAlts[j];
+      var mO = metaComuna(oa.alt.comuna);
+      html += '<div class="popup-tray-item" onclick="window.seleccionarAlternativa(' + oa.origIdx + ', event, true)">' +
+        '<div class="popup-tray-item-head">' +
+          '<span class="res-alt-badge badge-' + oa.alt.comuna + '">' + mO.txt + '</span>' +
+          '<span class="popup-tray-cuad"><b>' + oa.alt.cuadTxt + '</b></span>' +
+          '<span class="popup-tray-switch">👉 Ver aquí</span>' +
+        '</div>' +
+        '<div class="popup-tray-sector">📍 ' + escapeHtml(oa.alt.displayRoad || (oa.alt.cuad && oa.alt.cuad.sector) || oa.alt.display) + '</div>' +
+        (oa.alt.cuad && oa.alt.cuad.tel ? '<div class="popup-tray-tel">📞 ' + escapeHtml(oa.alt.cuad.tel) + '</div>' : '') +
+      '</div>';
+    }
+
+    html += '</div></div>';
+  }
+
+  html += '<div class="popup-corregir">' +
+    (alt.precision === 'corregida' && window.estadoCorreccion === 'compartida' ?
+      '<div class="popup-nota" style="color:#15803d;font-weight:700;">✅ Guardada para todo el equipo</div>' : '') +
+    '<a href="javascript:void(0)" class="popup-corr-link" onclick="window.iniciarCorreccion(event)">✏️ ¿No es aquí? Corregir ubicación (con contraseña)</a>' +
+  '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+function togglePopupTray(ev){
+  if (ev) {
+    if (ev.stopPropagation) ev.stopPropagation();
+    if (ev.preventDefault) ev.preventDefault();
+  }
+  var tray = document.getElementById('popup-semi-tray');
+  var popupEl = document.querySelector('.leaflet-popup');
+  if (!tray && popupEl) tray = popupEl.querySelector('.popup-semi-tray');
+  if (!tray) return;
+
+  var isOpening = (tray.style.display === 'none' || !tray.style.display);
+
+  // Reconstruir el contenido del popup con el estado deseado. Es necesario
+  // porque Leaflet vuelve a renderizar el HTML original cada vez que se llama
+  // a update() (al reposicionar el popup): un simple cambio de display quedaría
+  // descartado y el chevron se vería "pegado" sin abrir nunca la bandeja.
+  var idx = window.selectedAlternativaIdx;
+  var alt = window.currentAlternativas && window.currentAlternativas[idx];
+  if (alt && pin && pin.getPopup() && pin.getPopup().setContent) {
+    pin.getPopup().setContent(buildPopupHtml(alt, idx, isOpening));
+    return;
+  }
+
+  // Respaldo: alternar directamente en el DOM si no hay alternativa activa.
+  tray.style.display = isOpening ? 'block' : 'none';
+  var svg = popupEl ? popupEl.querySelector('.popup-chevron-svg') : document.querySelector('.popup-chevron-svg');
+  if (svg) svg.style.transform = isOpening ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+window.togglePopupTray = togglePopupTray;
+
+// Interacción al seleccionar una alternativa de la lista
+function seleccionarAlternativa(idx, ev, keepTrayOpen){
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  var alt = window.currentAlternativas && window.currentAlternativas[idx];
+  if (!alt) return;
+
+  window.selectedAlternativaIdx = idx;
+
+  var sel = document.getElementById('ciudad');
+  if (sel && sel.value !== alt.comuna) {
+    sel.value = alt.comuna;
+  }
+
+  dibujar(alt.comuna);
+
+  if (pin) map.removeLayer(pin);
+  map.setView([alt.lat, alt.lng], alt.zoom || 16);
+
+  var popupHtml = buildPopupHtml(alt, idx, keepTrayOpen);
+  pin = L.marker([alt.lat, alt.lng]).addTo(map).bindPopup(popupHtml, {
+    maxWidth: Math.min(340, window.innerWidth - 30),
+    autoPan: true,
+    autoPanPadding: [20, 20]
+  }).openPopup();
+
+  if (items && items.length) {
+    var hitItem = items.find(function(it){ return enItem(alt.lat, alt.lng, it); });
+    if (hitItem && hitItem.layer && hitItem.layer.setStyle) {
+      hitItem.layer.setStyle({ fillOpacity: 0.38 });
+    }
+  }
+
+  // Ocultar cualquier cuadro aparte flotante: todo queda integrado en el cuadro del cuadrante en el mapa
+  var resEl = document.getElementById('resultado');
+  if (resEl) resEl.style.display = 'none';
+
+  // Cerrar el desplegable de autocompletado con la lista de cuadrantes coincidentes;
+  // de lo contrario queda pegado sobre el popup al abrir el lugar. Se cancela además
+  // cualquier búsqueda remota pendiente (debounce) que volvería a mostrarlo ~220 ms después.
+  if (typeof acTimer !== 'undefined' && acTimer) { clearTimeout(acTimer); acTimer = null; }
+  var acBox = document.getElementById('q-autocomplete');
+  if (acBox) { acBox.style.display = 'none'; acBox.innerHTML = ''; }
+  var qInput = document.getElementById('q');
+  if (qInput) qInput.blur();
+}
+window.seleccionarAlternativa = seleccionarAlternativa;
+
+function renderAlternativasUI(query, alternativas, activeIdx, keepTrayOpen){
+  window.currentQuery = query;
+  window.currentAlternativas = alternativas;
+  seleccionarAlternativa(activeIdx != null ? activeIdx : 0, null, keepTrayOpen);
+}
+
+function initDraggableResultado(){
+  var el = document.getElementById('resultado');
+  if (!el || el._dragInitialized) return;
+  el._dragInitialized = true;
+
+  var isDragging = false;
+  var startX = 0, startY = 0;
+  var initialLeft = 0, initialTop = 0;
+
+  function onPointerDown(e){
+    var target = e.target;
+    if (target.closest('button') || target.closest('a') || target.closest('.res-alt-item') || target.closest('input')) return;
+    if (!target.closest('.res-title-row') && !target.closest('.res-drag-handle')) return;
+
+    isDragging = true;
+    el.classList.add('is-dragging');
+
+    var rect = el.getBoundingClientRect();
+    el.style.bottom = 'auto';
+    el.style.transform = 'none';
+    el.style.left = rect.left + 'px';
+    el.style.top = rect.top + 'px';
+
+    var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    startX = clientX;
+    startY = clientY;
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    document.addEventListener('mousemove', onPointerMove, { passive: false });
+    document.addEventListener('mouseup', onPointerUp);
+    document.addEventListener('touchmove', onPointerMove, { passive: false });
+    document.addEventListener('touchend', onPointerUp);
+  }
+
+  function onPointerMove(e){
+    if (!isDragging) return;
+    if (e.cancelable) e.preventDefault();
+
+    var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    var dx = clientX - startX;
+    var dy = clientY - startY;
+
+    var newLeft = initialLeft + dx;
+    var newTop = initialTop + dy;
+
+    var maxLeft = window.innerWidth - el.offsetWidth - 10;
+    var maxTop = window.innerHeight - el.offsetHeight - 10;
+
+    newLeft = Math.max(8, Math.min(newLeft, maxLeft));
+    newTop = Math.max(50, Math.min(newTop, maxTop));
+
+    el.style.left = newLeft + 'px';
+    el.style.top = newTop + 'px';
+  }
+
+  function onPointerUp(){
+    if (!isDragging) return;
+    isDragging = false;
+    el.classList.remove('is-dragging');
+
+    document.removeEventListener('mousemove', onPointerMove);
+    document.removeEventListener('mouseup', onPointerUp);
+    document.removeEventListener('touchmove', onPointerMove);
+    document.removeEventListener('touchend', onPointerUp);
+  }
+
+  el.addEventListener('mousedown', onPointerDown);
+  el.addEventListener('touchstart', onPointerDown, { passive: true });
+}
+
+function cambiarComunaYBuscar(comuna, query){
+  var sel = document.getElementById('ciudad');
+  if (sel) sel.value = comuna;
+  dibujar(comuna);
+  var qInput = document.getElementById('q');
+  if (qInput && query) qInput.value = query;
+  buscar();
+}
+
+// Autocompletado en vivo bajo el buscador (antes de presionar Buscar)
+var acTimer = null;
+var acCurrentItems = [];
+var acHighlightIdx = -1;
+
+function initAutocomplete(){
+  var qInput = document.getElementById('q');
+  var acBox = document.getElementById('q-autocomplete');
+  if (!qInput || !acBox) return;
+
+  function handleInputVal(val){
+    if (acTimer) clearTimeout(acTimer);
+    acHighlightIdx = -1;
+
+    if (val.length < 2) {
+      acBox.style.display = 'none';
+      acBox.innerHTML = '';
+      acCurrentItems = [];
+      return;
+    }
+
+    // Búsqueda instantánea local en catálogo multi-comuna, cuadrantes o hitos (0 ms)
+    var localSugs = buscarSugerenciasLocales(val);
+    if (localSugs && localSugs.length > 0) {
+      renderAutocomplete(localSugs, val);
+    }
+
+    // Búsqueda remota regional en OpenStreetMap debounced (220 ms)
+    acTimer = setTimeout(function(){
+      buscarSugerenciasRemotas(val);
+    }, 220);
+  }
+
+  qInput.addEventListener('input', function(e){
+    handleInputVal((e.target.value || '').trim());
+  });
+
+  // Reabrir al hacer foco o clic si hay texto
+  qInput.addEventListener('focus', function(){
+    var val = (qInput.value || '').trim();
+    if (val.length >= 2) {
+      handleInputVal(val);
+    }
+  });
+
+  // Cerrar al hacer clic fuera del input o del dropdown
+  document.addEventListener('click', function(e){
+    if (!qInput.contains(e.target) && !acBox.contains(e.target)) {
+      acBox.style.display = 'none';
+      acHighlightIdx = -1;
+    }
+  });
+
+  // Navegación con teclado (Flechas Arriba/Abajo, Enter, Escape)
+  qInput.addEventListener('keydown', function(e){
+    var itemsEl = acBox.querySelectorAll('.q-ac-item');
+    if (e.key === 'ArrowDown') {
+      if (acBox.style.display === 'none' || !itemsEl.length) return;
+      e.preventDefault();
+      acHighlightIdx = (acHighlightIdx + 1) % itemsEl.length;
+      itemsEl.forEach(function(el, i){
+        if (i === acHighlightIdx) {
+          el.classList.add('active');
+          el.scrollIntoView({ block: 'nearest' });
+        } else {
+          el.classList.remove('active');
+        }
+      });
+    } else if (e.key === 'ArrowUp') {
+      if (acBox.style.display === 'none' || !itemsEl.length) return;
+      e.preventDefault();
+      acHighlightIdx = (acHighlightIdx - 1 + itemsEl.length) % itemsEl.length;
+      itemsEl.forEach(function(el, i){
+        if (i === acHighlightIdx) {
+          el.classList.add('active');
+          el.scrollIntoView({ block: 'nearest' });
+        } else {
+          el.classList.remove('active');
+        }
+      });
+    } else if (e.key === 'Enter') {
+      if (acHighlightIdx >= 0 && acBox.style.display !== 'none' && acCurrentItems[acHighlightIdx]) {
+        e.preventDefault();
+        e.stopPropagation();
+        seleccionarSugerencia(acHighlightIdx);
+        return;
+      }
+    } else if (e.key === 'Escape') {
+      acBox.style.display = 'none';
+      acHighlightIdx = -1;
+    }
+  });
+}
+
+function buscarSugerenciasLocales(val){
+  var allCuads = initCuadrantesCache();
+  var sugs = [];
+  var seenKeys = {};
+
+  // 1. ¿Coincide con una calle? Se combinan el catálogo curado (coordenadas
+  //    afinadas a mano) y la base COMPLETA de calles de OSM (todas las comunas
+  //    y cuadrantes donde exista la calle/pasaje/avenida/ruta).
+  var multi = buscarCallesMulticomuna(val);
+  var dbSugs = dbHitsToMapSugs(val);
+  var street = mergeMapSugs(multi, dbSugs);
+  if (street.length > 0) {
+    return street;
+  }
+
+  // 2. ¿Es número o código de cuadrante?
+  var m = val.match(/^\s*(?:(?:cuadrante|cuad|sector|n[°º.]?)\s*)?(\d{1,2}|sra|srb|src|srd|pai-1|pai-2|and-1)\s*$/i);
+  if (m) {
+    var rawNum = m[1].toLowerCase().replace(/\s+/g,'');
+    var comunasKeys = ['serena','coquimbo','vicuna','paihuano','andacollo'];
+    comunasKeys.forEach(function(ck){
+      var list = allCuads[ck] || [];
+      list.forEach(function(c){
+        var nStr = String(c.n).toLowerCase().replace(/\s+/g,'');
+        var codStr = String(c.cod || '').toLowerCase().replace(/\s+/g,'');
+        if (nStr === rawNum || codStr === rawNum) {
+          var k = ck + '_' + c.cod;
+          if (!seenKeys[k]) {
+            seenKeys[k] = true;
+            sugs.push({
+              comuna: ck,
+              cuad: c,
+              cuadTxt: (/^\d+$/.test(c.n) ? 'Cuadrante N° ' + c.n : c.sector),
+              sectorTxt: c.sector,
+              displayFull: (/^\d+$/.test(c.n) ? 'Cuadrante N° ' + c.n : c.sector) + ' — ' + metaComuna(ck).txt,
+              tel: c.tel,
+              lat: null,
+              lng: null
+            });
+          }
+        }
+      });
+    });
+    return sugs;
+  }
+
+  // 3. ¿Coincide con un hito de gran avenida?
+  for (var i = 0; i < ARTERY_MILESTONES.length; i++) {
+    var art = ARTERY_MILESTONES[i];
+    if (art.pattern.test(val)) {
+      var mArt = checkMilestone(val, art.comuna);
+      if (mArt) {
+        var listArt = allCuads[mArt.comuna] || [];
+        var cMatch = listArt.find(function(c){ return enItem(mArt.lat, mArt.lng, c); });
+        if (cMatch) {
+          sugs.push({
+            comuna: mArt.comuna,
+            cuad: cMatch,
+            cuadTxt: (/^\d+$/.test(cMatch.n) ? 'Cuadrante N° ' + cMatch.n : cMatch.sector),
+            sectorTxt: mArt.street + (mArt.num ? ' ' + mArt.num : '') + ' (' + mArt.desc + ')',
+            displayFull: mArt.street + (mArt.num ? ' ' + mArt.num : '') + ' (' + mArt.desc + ')',
+            tel: cMatch.tel,
+            lat: mArt.lat,
+            lng: mArt.lng
+          });
+        }
+      }
+      break;
+    }
+  }
+
+  return sugs;
+}
+
+function buscarSugerenciasRemotas(val){
+  var allCuads = initCuadrantesCache();
+  var acBox = document.getElementById('q-autocomplete');
+  if (!acBox) return;
+
+  // Con numeración: ofrecer primero la dirección exacta geocodificada.
+  var valLimpio = limpiarDireccion(val);
+  var dirAc = parseDireccionConNumero(valLimpio);
+  if (dirAc) {
+    var corrAc = corregirCalle(dirAc.calle, dirAc.comuna || ciudad);
+    if (corrAc) valLimpio = corrAc.nombre + ' ' + dirAc.num + (dirAc.resto ? ', ' + dirAc.resto : '');
+    geocodificarNumeracion(valLimpio, ciudad).then(function(alts){
+      var qNow = document.getElementById('q');
+      if (!alts.length || (qNow && (qNow.value || '').trim() !== val)) return;
+      renderAutocomplete(alts.map(function(a){
+        return {
+          comuna: a.comuna, cuad: a.cuad, cuadTxt: a.cuadTxt,
+          sectorTxt: a.displayRoad, displayFull: a.display,
+          tel: a.cuad && a.cuad.tel, lat: a.lat, lng: a.lng, zoom: a.zoom,
+          calidad: a.calidad, precision: a.precision
+        };
+      }), val);
+    });
+    return;
+  }
+
+  fetchNominatim(val).then(function(js){
+    if (!Array.isArray(js) || !js.length) return;
+
+    var sugs = [];
+    var seenKeys = {};
+    var comunas = ['serena','coquimbo','vicuna','paihuano','andacollo'];
+
+    // Descartar los resultados de Nominatim que caigan en cuadrantes YA
+    // cubiertos por la base de calles (mismo criterio que el buscador de la
+    // portada), para que ambos muestren exactamente las mismas alternativas y
+    // no aparezcan filas repetidas del mismo cuadrante con otra etiqueta.
+    var baseSugs = dbHitsToMapSugs(val);
+    baseSugs.forEach(function(s){
+      if (s.cuad && s.cuad.cod != null) seenKeys[s.comuna + '_' + s.cuad.cod] = true;
+    });
+
+    for (var r = 0; r < js.length; r++) {
+      var lat = parseFloat(js[r].lat), lng = parseFloat(js[r].lon);
+      if (isNaN(lat) || isNaN(lng)) continue;
+
+      var addr = js[r].address || {};
+      var roadName = addr.road || addr.pedestrian || addr.footway || addr.path || addr.suburb || '';
+      var locName = addr.neighbourhood || addr.suburb || addr.city_district || addr.village || addr.town || addr.city || '';
+      var shortDisplay = roadName ? (roadName + (locName ? ', ' + locName : '')) : (js[r].display_name ? js[r].display_name.split(',').slice(0, 3).join(',') : val);
+
+      for (var c = 0; c < comunas.length; c++) {
+        var ck = comunas[c];
+        var list = allCuads[ck] || [];
+        for (var k = 0; k < list.length; k++) {
+          if (enItem(lat, lng, list[k])) {
+            var uniqueKey = ck + '_' + list[k].cod;
+            if (!seenKeys[uniqueKey]) {
+              seenKeys[uniqueKey] = true;
+              sugs.push({
+                comuna: ck,
+                cuad: list[k],
+                cuadTxt: (/^\d+$/.test(list[k].n) ? 'Cuadrante N° ' + list[k].n : list[k].sector),
+                sectorTxt: shortDisplay,
+                displayFull: js[r].display_name || (shortDisplay + ', ' + metaComuna(ck).txt),
+                tel: list[k].tel,
+                lat: lat,
+                lng: lng
+              });
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    // No reabrir el desplegable si el usuario ya eligió un lugar o cambió el texto
+    // mientras la petición remota estaba en curso (evita que quede "pegado" sobre el popup).
+    var qInputNow = document.getElementById('q');
+    if (qInputNow && (qInputNow.value || '').trim() !== val) return;
+
+    // Anteponer la cobertura completa de la base de calles (todas las comunas
+    // donde existe la calle) y añadir la geocodificación exacta de Nominatim.
+    sugs = mergeMapSugs(baseSugs, sugs);
+
+    if (sugs.length > 0) {
+      renderAutocomplete(sugs, val);
+    }
+  });
+}
+
+function renderAutocomplete(sugs, query){
+  var acBox = document.getElementById('q-autocomplete');
+  if (!acBox) return;
+
+  acCurrentItems = sugs;
+
+  // Priorizar la comuna actual del selector
+  var curComuna = ciudad;
+  sugs.sort(function(a, b){
+    if (a.comuna === curComuna && b.comuna !== curComuna) return -1;
+    if (b.comuna === curComuna && a.comuna !== curComuna) return 1;
+    return 0;
+  });
+
+  var html = '<div class="q-ac-header">📍 Opciones disponibles antes de buscar (' + sugs.length + ' alternativas):</div>';
+
+  for (var i = 0; i < sugs.length; i++) {
+    var s = sugs[i];
+    var m = metaComuna(s.comuna);
+    html += '<div class="q-ac-item" onclick="seleccionarSugerencia(' + i + ', event)">' +
+      '<div class="q-ac-top">' +
+        '<span class="q-ac-badge badge-' + s.comuna + '">' + m.txt + '</span>' +
+        '<span class="q-ac-cuad"><b>' + escapeHtml(s.cuadTxt) + '</b></span>' +
+        '<span class="q-ac-action">👉 Elegir ' + m.txt + '</span>' +
+      '</div>' +
+      '<div class="q-ac-road">📍 ' + escapeHtml(s.sectorTxt) + '</div>' +
+      (s.tel ? '<div class="q-ac-tel">📞 Teléfono: ' + escapeHtml(s.tel) + '</div>' : '') +
+    '</div>';
+  }
+
+  acBox.innerHTML = html;
+  acBox.style.display = 'block';
+}
+
+function seleccionarSugerencia(idx, ev){
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  var item = acCurrentItems && acCurrentItems[idx];
+  if (!item) return;
+
+  var acBox = document.getElementById('q-autocomplete');
+  if (acBox) acBox.style.display = 'none';
+
+  var qInput = document.getElementById('q');
+  if (qInput) qInput.value = item.sectorTxt || qInput.value;
+
+  var alts = (acCurrentItems || []).map(function(s){
+    return {
+      comuna: s.comuna,
+      cuad: s.cuad,
+      cuadTxt: s.cuadTxt,
+      lat: s.lat,
+      lng: s.lng,
+      display: s.displayFull || s.sectorTxt,
+      displayRoad: s.sectorTxt,
+      zoom: s.zoom,
+      calidad: s.calidad,
+      precision: s.precision
+    };
+  });
+
+  window.currentQuery = qInput ? qInput.value : '';
+  window.currentAlternativas = alts;
+  seleccionarAlternativa(idx);
+}
+
+function mostrarNoEncontrado(q, ciudadOrig, osmHit){
+  // Último intento: que la IA reinterprete el texto original (una sola vez).
+  if (busquedaActual && !busquedaActual.iaUsada && iaHabilitada) {
+    resolverConIA(busquedaActual.orig);
+    return;
+  }
+  var m = metaComuna(ciudadOrig);
+  var ciudadTxt = m ? m.txt : 'la comuna';
+
+  var osmSnippet = '';
+  if (osmHit && typeof osmHit.display_name === 'string') {
+    try {
+      osmSnippet = osmHit.display_name.split(',').slice(0, 3).join(',');
+    } catch(e){}
+  }
+
+  var html = '<div class="res-card res-card-notfound">' +
+    '<div class="res-title-row">' +
+      '<span class="res-drag-handle" title="Arrastrar para mover">⋮⋮</span>' +
+      '<span class="res-icon" style="color:#dc2626;">❌</span>' +
+      '<span class="res-title" style="color:#dc2626;">No se encuentra en ' + ciudadTxt + '</span>' +
+      '<button class="res-close-btn" onclick="cerrarResultado()" title="Cerrar">✕</button>' +
+    '</div>' +
+    '<div class="res-body">' +
+      '<p style="margin:2px 0 6px 0; color:#374151; font-size:12px;">' +
+        'No se encuentra dirección en la comuna de ' + ciudadTxt + ' para "<b>' + escapeHtml(q) + '</b>".' +
+      '</p>' +
+      (osmSnippet ? '<div style="font-size:11px;color:#6b7280;margin-bottom:6px;">📍 Ubicación detectada fuera de los cuadrantes: ' + escapeHtml(osmSnippet) + '</div>' : '') +
+      '<div class="res-sugerencias">' +
+        '<b>💡 Sugerencias rápidas:</b>' +
+        '<ul>' +
+          '<li>Verifica la ortografía de la calle o avenida (ej. <i>Balmaceda</i>, <i>Av. del Mar</i>, <i>Aldunate</i>, <i>Los Cedros</i>).</li>' +
+          '<li>Prueba ingresando solo el nombre de la calle, o quitando el número.</li>' +
+          '<li>Si buscas en otra comuna, cámbiala en el selector superior (Coquimbo, La Serena, Vicuña, Paihuano, Andacollo).</li>' +
+          '<li>O busca directamente por número de cuadrante (ej. <b>1</b>, <b>2</b>, <b>5</b>, <b>SRA</b>).</li>' +
+        '</ul>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  var resEl = document.getElementById('resultado');
+  if (resEl) {
+    resEl.style.borderLeftColor = '#dc2626';
+    resEl.innerHTML = html;
+    resEl.classList.remove('res-collapsed');
+    resEl.style.display = 'block';
+    initDraggableResultado();
+  }
+}
+
+function buscar(){
+  var q = (document.getElementById('q').value || '').trim();
+  if (!q) return;
+  notaBusqueda = null;
+  busquedaActual = { orig: q, iaUsada: false };
+
+  var meta = metaComuna(ciudad);
+  var ciudadTxt = meta.txt;
+  var borderCol = meta.border;
+  var allCuads = initCuadrantesCache();
+
+  // 1. Búsqueda directa por número o código de cuadrante
+  var m = q.match(/^\s*(?:(?:cuadrante|cuad|sector|tenencia|reten|n[°º.]?)\s*)?(\d{1,2}|sra|srb|src|srd|pai-1|pai-2|paihuano|pisco\s*elqui|and-1|andacollo)\s*$/i);
+  if (m) {
+    var raw = m[1].toLowerCase().replace(/\s+/g,'');
+    
+    // Buscar en la comuna actual
+    var it = items.find(function(p){
+      var nStr = String(p.n).toLowerCase().replace(/\s+/g,'');
+      var codStr = String(p.cod || '').toLowerCase().replace(/\s+/g,'');
+      var secStr = String(p.sector || '').toLowerCase();
+      return nStr === raw || codStr === raw || secStr.indexOf(raw) !== -1;
+    });
+
+    // Buscar si también existe en otras comunas
+    var otrasAlternativas = [];
+    var comunasKeys = ['coquimbo','serena','vicuna','paihuano','andacollo'];
+    comunasKeys.forEach(function(ck){
+      if (ck !== ciudad) {
+        var matchOther = allCuads[ck].find(function(p){
+          var nStr = String(p.n).toLowerCase().replace(/\s+/g,'');
+          var codStr = String(p.cod || '').toLowerCase().replace(/\s+/g,'');
+          var secStr = String(p.sector || '').toLowerCase();
+          return nStr === raw || codStr === raw || secStr.indexOf(raw) !== -1;
+        });
+        if (matchOther) {
+          otrasAlternativas.push({ comuna: ck, cuad: matchOther });
+        }
+      }
+    });
+
+    if (it) {
+      map.fitBounds(it.layer.getBounds().pad(0.2));
+      it.layer.openPopup();
+      document.getElementById('resultado').style.borderLeftColor = borderCol;
+      var html = '<div class="res-card">' +
+        '<div class="res-title-row">' +
+          '<span class="res-icon">👮</span>' +
+          '<span class="res-title"><b>Cuadrante / Sector: ' + (/^\d+$/.test(it.n) ? 'N° ' : '') + it.n + '</b> · ' + ciudadTxt + '</span>' +
+          '<button class="res-close-btn" onclick="cerrarResultado()" title="Cerrar">✕</button>' +
+        '</div>' +
+        '<div class="res-body">' +
+          '<div style="font-size:13px;margin-bottom:6px;color:#374151;">' + it.sector + '</div>' +
+          '<div>Teléfono patrulla: ' + telLink(it.tel) + '</div>';
+
+      if (otrasAlternativas.length > 0) {
+        html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e5e7eb;font-size:12.5px;color:#4b5563;">' +
+          '💡 <b>También existe en:</b> ';
+        otrasAlternativas.forEach(function(oa, oi){
+          var mo = metaComuna(oa.comuna);
+          html += (oi > 0 ? ' · ' : '') + '<a href="javascript:void(0)" onclick="cambiarComunaYBuscar(\'' + oa.comuna + '\', \'' + escapeHtml(q) + '\')" style="color:' + mo.border + ';font-weight:700;text-decoration:underline;">' + mo.txt + '</a>';
+        });
+        html += '</div>';
+      }
+
+      html += '</div></div>';
+      res(html);
+    } else {
+      if (otrasAlternativas.length > 0) {
+        var primeraOtra = otrasAlternativas[0];
+        var mo = metaComuna(primeraOtra.comuna);
+        var html = '<div class="res-card">' +
+          '<div class="res-title-row">' +
+            '<span class="res-icon">⚠️</span>' +
+            '<span class="res-title">No se encuentra en ' + ciudadTxt + '</span>' +
+            '<button class="res-close-btn" onclick="cerrarResultado()" title="Cerrar">✕</button>' +
+          '</div>' +
+          '<div class="res-body">' +
+            '<p style="margin:4px 0 8px 0;">No se encontró el cuadrante "' + escapeHtml(q) + '" en ' + ciudadTxt + ', pero está disponible en <b>' + mo.txt + '</b>.</p>' +
+            '<button type="button" class="btn-buscar-alt" onclick="cambiarComunaYBuscar(\'' + primeraOtra.comuna + '\', \'' + escapeHtml(q) + '\')" style="padding:7px 12px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;font-weight:700;color:#166534;cursor:pointer;">👉 Ver ' + (/^\d+$/.test(primeraOtra.cuad.n)?'Cuadrante N° ':'') + primeraOtra.cuad.n + ' en ' + mo.txt + '</button>' +
+          '</div></div>';
+        res(html);
+      } else {
+        res('<div class="res-card res-card-notfound">' +
+          '<div class="res-title-row">' +
+            '<span class="res-icon">❌</span>' +
+            '<span class="res-title">No se encuentra cuadrante en ' + ciudadTxt + '</span>' +
+            '<button class="res-close-btn" onclick="cerrarResultado()" title="Cerrar">✕</button>' +
+          '</div>' +
+          '<div class="res-body"><p style="margin:4px 0;">No se encontró el cuadrante o sector "' + escapeHtml(q) + '" en ' + ciudadTxt + '.</p></div></div>');
+      }
+    }
+    return;
+  }
+
+  // 2. Motor de direcciones: correcciones, limpieza, IA, esquinas,
+  //    numeración exacta, ortografía, lugares (ver MOTOR DE DIRECCIONES).
+  resolverDireccion(q);
+}
+
+// Búsqueda por nombre de calle (sin numeración exacta): catálogo, base de
+// calles, hitos de avenidas y, por último, Nominatim.
+function buscarCalle(q, yaCorregida){
+  var allCuads = initCuadrantesCache();
+
+  // 3. Comprobación instantánea de calles: catálogo curado + base COMPLETA de
+  //    calles de OSM (todas las comunas/cuadrantes donde exista la calle).
+  var localCommon = mergeMapSugs(buscarCallesMulticomuna(q), dbHitsToMapSugs(q));
+  if (localCommon && localCommon.length > 0) {
+    // Priorizar la comuna actual del selector
+    localCommon.sort(function(a, b){
+      if (a.comuna === ciudad && b.comuna !== ciudad) return -1;
+      if (b.comuna === ciudad && a.comuna !== ciudad) return 1;
+      return 0;
+    });
+
+    window.currentQuery = q;
+    window.currentAlternativas = localCommon;
+
+    seleccionarAlternativa(0);
+    renderAlternativasUI(q, localCommon, 0);
+    return;
+  }
+
+  // 3. Comprobación instantánea con tabla de hitos (0 ms) para grandes arterias y numeración exacta
+  var milestoneHit = checkMilestone(q, ciudad);
+  if (milestoneHit) {
+    var targetList = allCuads[milestoneHit.comuna] || [];
+    var matchedCuad = null;
+    for (var mi = 0; mi < targetList.length; mi++) {
+      if (enItem(milestoneHit.lat, milestoneHit.lng, targetList[mi])) {
+        matchedCuad = targetList[mi];
+        break;
+      }
+    }
+    if (!matchedCuad && targetList.length) {
+      matchedCuad = targetList.find(function(c){ return String(c.cod) === String(milestoneHit.cuadN); }) || targetList[0];
+    }
+
+    if (matchedCuad) {
+      var altDirecta = [{
+        comuna: milestoneHit.comuna,
+        cuad: matchedCuad,
+        cuadTxt: (/^\d+$/.test(matchedCuad.n) ? 'Cuadrante N° ' + matchedCuad.n : matchedCuad.sector),
+        lat: milestoneHit.lat,
+        lng: milestoneHit.lng,
+        display: milestoneHit.street + (milestoneHit.num ? ' ' + milestoneHit.num : '') + ' (' + milestoneHit.desc + ')',
+        displayRoad: milestoneHit.street + (milestoneHit.num ? ' ' + milestoneHit.num : '')
+      }];
+
+      // Si la arteria también existe en otra comuna (ej. Balmaceda en Coquimbo / Las Compañías), buscar alternativas
+      var comunasKeys2 = ['coquimbo','serena','vicuna','paihuano','andacollo'];
+      comunasKeys2.forEach(function(ck){
+        if (ck !== milestoneHit.comuna) {
+          var otherM = checkMilestone(q, ck);
+          if (otherM && otherM.comuna === ck) {
+            var otherList = allCuads[ck] || [];
+            var otherCuad = otherList.find(function(c){ return enItem(otherM.lat, otherM.lng, c); });
+            if (otherCuad) {
+              altDirecta.push({
+                comuna: ck,
+                cuad: otherCuad,
+                cuadTxt: (/^\d+$/.test(otherCuad.n) ? 'Cuadrante N° ' + otherCuad.n : otherCuad.sector),
+                lat: otherM.lat,
+                lng: otherM.lng,
+                display: otherM.street + (otherM.num ? ' ' + otherM.num : '') + ' (' + otherM.desc + ')',
+                displayRoad: otherM.street + (otherM.num ? ' ' + otherM.num : '')
+              });
+            }
+          }
+        }
+      });
+
+      window.currentQuery = q;
+      window.currentAlternativas = altDirecta;
+
+      seleccionarAlternativa(0);
+      renderAlternativasUI(q, altDirecta, 0);
+      return;
+    }
+  }
+
+  // 4. Lugares por nombre (SAPU, colegios, malls…) y calle mal escrita.
+  res('<div class="res-loading"><span class="res-loading-spinner"></span> Buscando lugar o dirección…</div>');
+  geoLugar(q, ciudad).then(function(lugares){
+    if (lugares.length) { renderAlternativasUI(q, lugares, 0); return; }
+    var corr = !yaCorregida && corregirCalle(q, comunaEnTexto(q) || ciudad);
+    if (corr) {
+      if (!notaBusqueda) notaBusqueda = '🔤 Quisiste decir: <b>' + escapeHtml(corr.nombre) + '</b>';
+      buscarCalle(corr.nombre, true);
+      return;
+    }
+    buscarNominatim(q);
+  });
+}
+
+// 5. Búsqueda geocodificada en Nominatim con protección contra bloqueos
+function buscarNominatim(q){
+  var allCuads = initCuadrantesCache();
+  var ciudadOrig = ciudad;
+  var metaOrig = metaComuna(ciudadOrig);
+  var comunas = ['coquimbo','serena','vicuna','paihuano','andacollo'];
+
+  res('<div class="res-loading"><span class="res-loading-spinner"></span> Buscando dirección y avenidas en la comuna…</div>');
+
+  // Temporizador maestro de seguridad para evitar que la interfaz se quede pegada
+  var safetyTimer = setTimeout(function(){
+    mostrarNoEncontrado(q, ciudadOrig);
+  }, 3800);
+
+  fetchNominatim(q, ciudadOrig).then(function(js){
+    clearTimeout(safetyTimer);
+
+    if (!Array.isArray(js) || !js.length) {
+      mostrarNoEncontrado(q, ciudadOrig);
+      return;
+    }
+
+    var alternativas = [];
+    var seenKeys = {};
+
+    // Clasificación y puntuación de candidatos para priorizar la comuna seleccionada
+    var scoredCandidates = [];
+    for (var r = 0; r < js.length; r++) {
+      var cLat = parseFloat(js[r].lat), cLng = parseFloat(js[r].lon);
+      if (isNaN(cLat) || isNaN(cLng)) continue;
+
+      var score = 0;
+      var cAddr = js[r].address || {};
+      var cType = js[r].type || '';
+      var cClass = js[r].class || '';
+
+      // Priorizar arterias principales sobre pasajes peatonales
+      if (cType === 'primary' || cType === 'secondary' || cType === 'trunk') score += 40;
+      if (cType === 'tertiary' || cType === 'residential') score += 20;
+      if (cType === 'living_street') score -= 20;
+
+      // Priorizar coincidencia de comuna
+      var displayLow = (js[r].display_name || '').toLowerCase();
+      if (displayLow.indexOf(metaOrig.txt.toLowerCase()) !== -1) score += 100;
+
+      scoredCandidates.push({ hit: js[r], lat: cLat, lng: cLng, score: score });
+    }
+
+    scoredCandidates.sort(function(a, b){ return b.score - a.score; });
+
+    for (var s = 0; s < scoredCandidates.length; s++) {
+      var itemCand = scoredCandidates[s];
+      var lat = itemCand.lat, lng = itemCand.lng;
+      var hit = itemCand.hit;
+      var addr = hit.address || {};
+      var roadName = addr.road || addr.pedestrian || addr.footway || addr.path || addr.suburb || '';
+      var locName = addr.neighbourhood || addr.suburb || addr.city_district || addr.village || addr.town || addr.city || '';
+      var shortDisplay = roadName ? (roadName + (locName ? ', ' + locName : '')) : (hit.display_name ? hit.display_name.split(',').slice(0, 3).join(',') : q);
+
+      for (var c = 0; c < comunas.length; c++) {
+        var comKey = comunas[c];
+        var list = allCuads[comKey] || [];
+        for (var k = 0; k < list.length; k++) {
+          if (enItem(lat, lng, list[k])) {
+            var uniqueKey = comKey + '_' + list[k].cod;
+            if (!seenKeys[uniqueKey]) {
+              seenKeys[uniqueKey] = true;
+              alternativas.push({
+                comuna: comKey,
+                cuad: list[k],
+                cuadTxt: (/^\d+$/.test(list[k].n) ? 'Cuadrante N° ' + list[k].n : list[k].sector),
+                lat: lat,
+                lng: lng,
+                display: hit.display_name || (shortDisplay + ', ' + metaComuna(comKey).txt),
+                displayRoad: shortDisplay
+              });
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    if (!alternativas.length) {
+      mostrarNoEncontrado(q, ciudadOrig, js[0]);
+      return;
+    }
+
+    // Ordenar alternativas dando preferencia a la comuna seleccionada actualmente
+    alternativas.sort(function(a, b){
+      if (a.comuna === ciudadOrig && b.comuna !== ciudadOrig) return -1;
+      if (b.comuna === ciudadOrig && a.comuna !== ciudadOrig) return 1;
+      return 0;
+    });
+
+    window.currentQuery = q;
+    window.currentAlternativas = alternativas;
+
+    var comunasDistintas = [];
+    alternativas.forEach(function(a){
+      if (comunasDistintas.indexOf(a.comuna) === -1) comunasDistintas.push(a.comuna);
+    });
+
+    seleccionarAlternativa(0);
+    renderAlternativasUI(q, alternativas, 0);
+  }).catch(function(err){
+    clearTimeout(safetyTimer);
+    console.warn('Excepción al buscar dirección:', err);
+    mostrarNoEncontrado(q, ciudadOrig);
+  });
+}
+
+document.getElementById('ciudad').addEventListener('change',function(e){
+  if(pin){ map.removeLayer(pin); pin=null; }
+  dibujar(e.target.value);
+});
+
+document.getElementById('buscar-btn').addEventListener('click',buscar);
+document.getElementById('q').addEventListener('keydown',function(e){ if(e.key==='Enter') buscar(); });
+
+init();
+initCuadrantesCache();
+initAutocomplete();
+cargarCorreccionesEquipo();
+initDraggableResultado();
+setTimeout(function(){ map.invalidateSize(); },80);
+
+// Soporte para parámetros URL directos (?q=...&ciudad=...)
+(function checkUrlParams() {
+  try {
+    var sp = new URLSearchParams(window.location.search);
+    var qParam = sp.get('q') || sp.get('buscar') || sp.get('direccion');
+    var ciudadParam = sp.get('ciudad') || sp.get('comuna');
+    var sel = document.getElementById('ciudad');
+    
+    if (ciudadParam && sel) {
+      var val = ciudadParam.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (val.indexOf('serena') !== -1) sel.value = 'serena';
+      else if (val.indexOf('vicun') !== -1) sel.value = 'vicuna';
+      else if (val.indexOf('paih') !== -1) sel.value = 'paihuano';
+      else if (val.indexOf('andac') !== -1) sel.value = 'andacollo';
+      else sel.value = 'coquimbo';
+      dibujar(sel.value);
+    }
+    
+    // Deep-link preciso: si vienen coordenadas exactas (?lat=..&lng=..), posiciona
+    // el pin directamente en el cuadrante correcto (usado por el buscador de index.html).
+    var latParam = parseFloat(sp.get('lat'));
+    var lngParam = parseFloat(sp.get('lng'));
+    if (!isNaN(latParam) && !isNaN(lngParam)) {
+      var allC = initCuadrantesCache();
+      var comunasK = ['serena','coquimbo','vicuna','paihuano','andacollo'];
+      var foundCuad = null, foundComuna = null;
+      for (var ci = 0; ci < comunasK.length; ci++) {
+        var lst = allC[comunasK[ci]] || [];
+        for (var ki = 0; ki < lst.length; ki++) {
+          if (enItem(latParam, lngParam, lst[ki])) { foundCuad = lst[ki]; foundComuna = comunasK[ci]; break; }
+        }
+        if (foundCuad) break;
+      }
+      var comunaFinal = foundComuna || (sel && sel.value) || 'coquimbo';
+      if (sel) sel.value = comunaFinal;
+      dibujar(comunaFinal);
+      var displayTxt = qParam || (foundCuad ? foundCuad.sector : 'Ubicación');
+      var altPreciso = {
+        comuna: comunaFinal,
+        lat: latParam,
+        lng: lngParam,
+        cuad: foundCuad || { n: '', cod: '', tel: '', sector: displayTxt },
+        cuadTxt: foundCuad ? (/^\d+$/.test(String(foundCuad.n)) ? 'Cuadrante N° ' + foundCuad.n : foundCuad.sector) : 'Cuadrante',
+        display: displayTxt,
+        displayRoad: displayTxt
+      };
+      var qi = document.getElementById('q');
+      if (qi && qParam) qi.value = qParam;
+      setTimeout(function(){ renderAlternativasUI(displayTxt, [altPreciso], 0); }, 300);
+      return;
+    }
+
+    if (qParam) {
+      var qInput = document.getElementById('q');
+      if (qInput) {
+        qInput.value = qParam;
+        if (!ciudadParam && sel) {
+          var qNorm = qParam.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          if (qNorm.indexOf('serena') !== -1 || qNorm.indexOf('compania') !== -1) {
+            sel.value = 'serena';
+            dibujar('serena');
+          } else if (qNorm.indexOf('vicun') !== -1) {
+            sel.value = 'vicuna';
+            dibujar('vicuna');
+          } else if (qNorm.indexOf('paih') !== -1 || qNorm.indexOf('pisco') !== -1) {
+            sel.value = 'paihuano';
+            dibujar('paihuano');
+          } else if (qNorm.indexOf('andac') !== -1) {
+            sel.value = 'andacollo';
+            dibujar('andacollo');
+          }
+        }
+        setTimeout(function() {
+          buscar();
+        }, 300);
+      }
+    }
+  } catch (err) {
+    console.warn('Error procesando parámetros URL:', err);
+  }
+})();
+</script>
+</body>
+</html>
