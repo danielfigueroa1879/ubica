@@ -3,7 +3,7 @@
 <head>
 <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/favicon-48.png">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#146314">
+<meta name="theme-color" content="#1d4ed8">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -20,7 +20,7 @@
 <script src="assets/js/calles-db.js?v=1" defer></script>
 <script src="assets/js/direcciones-osm.js?v=202610222220" defer></script>
 <style>
-  :root{ --verde:#146314; --verde2:#0d4a0d; --verde-claro:#16a34a; --azul:#1d4ed8; }
+  :root{ --verde:#1d4ed8; --verde2:#1e3a8a; --verde-claro:#2563eb; --azul:#1d4ed8; }
   *{ box-sizing:border-box; } html,body{ margin:0; height:100%; font-family:'Segoe UI',system-ui,Arial,sans-serif; }
   #mapa-modal{ position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; background:#fff; }
   #mapa-topbar{ position:relative; z-index:2500; background:linear-gradient(135deg,var(--verde),var(--verde2)); color:#fff; padding:10px 14px;
@@ -41,15 +41,15 @@
   #instalar-banner .cerrar{ position:absolute; top:4px; right:4px; border:none; background:transparent; font-size:20px; color:#6b7280; cursor:pointer; padding:4px 8px; }
   #mapa-topbar .topbar-row{ display:flex; align-items:center; gap:9px; min-width:0; flex-wrap:nowrap; }
   #mapa-topbar select, #mapa-topbar input{ border:none; border-radius:9px; padding:9px 12px; font-size:14px; outline:none; }
-  #mapa-topbar select{ flex:0 0 auto; font-weight:700; color:#144a14; background:#f0fdf4; cursor:pointer; }
+  #mapa-topbar select{ flex:0 0 auto; font-weight:700; color:#1e3a8a; background:#eff6ff; cursor:pointer; }
   .search-box-wrap{ position:relative; flex:1 1 auto; min-width:210px; max-width:390px; }
   #mapa-topbar input{ width:100%; min-width:0; max-width:none; }
   /* Micrófono para dictar dentro del buscador */
   #q.con-mic{ padding-right:44px !important; }
   #mic-btn{ position:absolute; right:5px; top:50%; transform:translateY(-50%); width:34px; height:34px; border-radius:50%;
-    border:none; background:transparent; color:#146314; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    border:none; background:transparent; color:#1d4ed8; cursor:pointer; display:flex; align-items:center; justify-content:center;
     transition:background .15s, color .15s; }
-  #mic-btn:hover{ background:#f0fdf4; }
+  #mic-btn:hover{ background:#eff6ff; }
   #mic-btn[hidden]{ display:none; }
   #mic-btn.escuchando{ background:#dc2626; color:#fff; animation:micPulso 1.1s ease-in-out infinite; }
   @keyframes micPulso{ 0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.55); } 50%{ box-shadow:0 0 0 9px rgba(220,38,38,0); } }
@@ -58,7 +58,7 @@
   .q-autocomplete-dropdown{
     position:absolute; top:calc(100% + 6px); left:0; right:0; width:100%; min-width:100%; max-width:none; background:#ffffff;
     border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.38), 0 2px 10px rgba(0,0,0,.15);
-    border:2px solid #16a34a; max-height:380px; overflow-y:auto; z-index:99999;
+    border:2px solid #2563eb; max-height:380px; overflow-y:auto; z-index:99999;
     display:none; font-family:inherit; animation:fadeInDown .15s ease-out;
   }
   @keyframes fadeInDown{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
@@ -71,17 +71,17 @@
     transition:background .12s ease; display:flex; flex-direction:column; gap:3px; text-align:left;
   }
   .q-ac-item:last-child{ border-bottom:none; }
-  .q-ac-item:hover, .q-ac-item.active{ background:#f0fdf4; }
+  .q-ac-item:hover, .q-ac-item.active{ background:#eff6ff; }
   .q-ac-top{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
   .q-ac-badge{ font-size:10.5px; font-weight:800; text-transform:uppercase; padding:2px 7px; border-radius:999px; }
   .q-ac-cuad{ font-size:13px; font-weight:700; color:#111827; }
-  .q-ac-action{ margin-left:auto; font-size:11.5px; font-weight:700; color:#16a34a; }
+  .q-ac-action{ margin-left:auto; font-size:11.5px; font-weight:700; color:#2563eb; }
   .q-ac-item:hover .q-ac-action{ text-decoration:underline; }
   .q-ac-road{ font-size:12px; color:#4b5563; }
-  .q-ac-tel{ font-size:11.5px; font-weight:700; color:#166534; }
+  .q-ac-tel{ font-size:11.5px; font-weight:700; color:#1e40af; }
   .popup-alt-box{ margin-top:9px; padding-top:7px; border-top:1px dashed #d1d5db; font-size:12px; }
-  .popup-alt-btn{ display:inline-flex; align-items:center; gap:4px; margin-top:4px; padding:6px 11px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; font-weight:800; color:#166534; text-decoration:none; cursor:pointer; font-size:12px; transition:all .15s; }
-  .popup-alt-btn:hover{ background:#dcfce7; border-color:#22c55e; transform:translateY(-1px); }
+  .popup-alt-btn{ display:inline-flex; align-items:center; gap:4px; margin-top:4px; padding:6px 11px; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:8px; font-weight:800; color:#1e40af; text-decoration:none; cursor:pointer; font-size:12px; transition:all .15s; }
+  .popup-alt-btn:hover{ background:#dbeafe; border-color:#3b82f6; transform:translateY(-1px); }
   #buscar-btn{ background:#ffd24a; color:#5a3d00; border:none; border-radius:9px; padding:9px 14px; font-weight:700; cursor:pointer; flex:0 0 auto; transition:all .15s ease; }
   #buscar-btn:hover{ background:#facc15; transform:translateY(-1px); }
   #map{ position:absolute; inset:0; width:100%; height:100%; }
@@ -119,23 +119,23 @@
 
   /* Bloque de Información Principal (Siempre visible y compacto) */
   .res-main-info{
-    background:rgba(240,253,244,0.7);
-    border:1px solid rgba(187,247,208,0.85);
+    background:rgba(239,246,255,0.7);
+    border:1px solid rgba(191,219,254,0.85);
     border-radius:10px; padding:7px 10px; margin-bottom:6px;
   }
   .res-cuad-headline{
-    font-size:13px; font-weight:800; color:#14532d;
+    font-size:13px; font-weight:800; color:#1e3a8a;
     display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:3px;
   }
   .res-sector-text{ font-size:11.5px; color:#374151; line-height:1.3; margin-bottom:4px; }
   .res-tel-row{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:#1f2937; margin-top:3px; }
   .res-tel-btn{
     display:inline-flex; align-items:center; gap:4px;
-    background:#15803d; color:#fff; font-weight:800; font-size:11.5px;
+    background:#1d4ed8; color:#fff; font-weight:800; font-size:11.5px;
     padding:3px 9px; border-radius:6px; text-decoration:none;
     transition:background .15s ease;
   }
-  .res-tel-btn:hover{ background:#166534; }
+  .res-tel-btn:hover{ background:#1e40af; }
 
   /* Barra interactiva con Chevron en V */
   .res-chevron-bar{
@@ -166,8 +166,8 @@
     background:rgba(255,255,255,0.95); border:1px solid #e5e7eb; border-radius:8px; padding:6px 9px;
     cursor:pointer; transition:all .15s ease; text-align:left; font-family:inherit;
   }
-  .res-alt-item:hover{ background:#f0fdf4; border-color:#86efac; transform:translateY(-1px); }
-  .res-alt-item.active{ background:#ecfdf5; border-color:#10b981; box-shadow:0 0 0 1.5px rgba(16,185,129,0.25); }
+  .res-alt-item:hover{ background:#eff6ff; border-color:#93c5fd; transform:translateY(-1px); }
+  .res-alt-item.active{ background:#eff6ff; border-color:#3b82f6; box-shadow:0 0 0 1.5px rgba(59,130,246,0.25); }
   .res-alt-top{ display:flex; align-items:center; gap:6px; margin-bottom:2px; flex-wrap:wrap; }
   .res-alt-badge{ font-size:10px; font-weight:800; text-transform:uppercase; padding:1.5px 6px; border-radius:999px; letter-spacing:0.3px; }
   .badge-serena{ background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
@@ -176,8 +176,8 @@
   .badge-paihuano{ background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; }
   .badge-andacollo{ background:#ffedd5; color:#9a3412; border:1px solid #fdba74; }
   .res-alt-cuad{ font-size:11.5px; color:#111827; }
-  .res-alt-action{ margin-left:auto; font-size:11px; font-weight:700; color:#15803d; }
-  .res-alt-item.active .res-alt-action{ color:#059669; font-weight:800; }
+  .res-alt-action{ margin-left:auto; font-size:11px; font-weight:700; color:#1d4ed8; }
+  .res-alt-item.active .res-alt-action{ color:#2563eb; font-weight:800; }
   .res-alt-sector{ font-size:11px; color:#4b5563; line-height:1.25; }
   .res-tray-actions{ display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
   .res-action-btn{
@@ -189,10 +189,10 @@
   .res-action-133{ background:#fef2f2; border-color:#fca5a5; color:#b91c1c; }
   .res-action-133:hover{ background:#fee2e2; }
 
-  .res-loading{ display:flex; align-items:center; font-weight:700; color:#166534; font-size:12.5px; }
+  .res-loading{ display:flex; align-items:center; font-weight:700; color:#1e40af; font-size:12.5px; }
   .res-loading-spinner{
     display:inline-block; width:16px; height:16px; border:2px solid #e5e7eb;
-    border-top-color:#16a34a; border-radius:50%; animation:spin .7s linear infinite;
+    border-top-color:#2563eb; border-radius:50%; animation:spin .7s linear infinite;
     vertical-align:middle; margin-right:8px; flex:0 0 auto;
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
@@ -234,8 +234,8 @@
   .leaflet-popup-content .popup-title{ font-size: 14px; font-weight: 800; color: var(--verde2); margin-bottom: 3px; }
   .leaflet-popup-content .popup-sector{ font-weight: 700; color: #1f2937; font-size: 12px; }
   .leaflet-popup-content .popup-unidad{ font-size: 11.5px; color: #4b5563; margin-bottom: 4px; }
-  .leaflet-popup-content .tel-link{ display: inline-block; margin-top: 5px; padding: 6px 11px; background: #e8f5e8;
-    border: 1px solid #bfe3bf; border-radius: 7px; font-size: 12px; font-weight: 800; }
+  .leaflet-popup-content .tel-link{ display: inline-block; margin-top: 5px; padding: 6px 11px; background: #eff6ff;
+    border: 1px solid #bfdbfe; border-radius: 7px; font-size: 12px; font-weight: 800; }
   .leaflet-popup-content .doc-link{ display: inline-block; margin-top: 5px; font-size: 11.5px; color: #1d4ed8; font-weight: 700; text-decoration: none; }
   .leaflet-popup-content .doc-link:hover{ text-decoration: underline; }
 
@@ -250,11 +250,11 @@
   .popup-nota{ margin-top:4px; font-size:11px; color:#4b5563; }
   .popup-corregir{ margin-top:8px; display:flex; flex-direction:column; gap:5px; align-items:flex-start; }
   .popup-corr-link{ font-size:11px; color:#6b7280; text-decoration:underline; }
-  .popup-corr-btn{ font-size:11px; font-weight:700; padding:5px 9px; border-radius:8px; border:1.5px solid #86efac; background:#f0fdf4; color:#166534; cursor:pointer; }
+  .popup-corr-btn{ font-size:11px; font-weight:700; padding:5px 9px; border-radius:8px; border:1.5px solid #93c5fd; background:#eff6ff; color:#1e40af; cursor:pointer; }
 
   .popup-cuad-box{
-    background: rgba(240, 253, 244, 0.75);
-    border: 1px solid rgba(187, 247, 208, 0.85);
+    background: rgba(239,246,255, 0.75);
+    border: 1px solid rgba(191,219,254, 0.85);
     border-radius: 9px;
     padding: 7px 9px;
   }
@@ -265,7 +265,7 @@
     gap: 6px;
     margin-bottom: 3px;
   }
-  .popup-cuad-title{ font-size: 13px; font-weight: 800; color: #14532d; }
+  .popup-cuad-title{ font-size: 13px; font-weight: 800; color: #1e3a8a; }
   .popup-cuad-sector{ font-size: 11.5px; color: #374151; margin-bottom: 4px; line-height: 1.3; }
   .popup-cuad-tel-row{ display: flex; align-items: center; gap: 6px; font-size: 11.5px; }
   .popup-tel-lbl{ color: #4b5563; font-weight: 600; font-size: 11px; }
@@ -273,7 +273,7 @@
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    background: #15803d;
+    background: #1d4ed8;
     color: #fff !important;
     font-weight: 800;
     font-size: 11px;
@@ -282,7 +282,7 @@
     text-decoration: none;
     transition: background .15s ease;
   }
-  .popup-tel-btn:hover{ background: #166534; }
+  .popup-tel-btn:hover{ background: #1e40af; }
 
   /* Barra de Chevron V en el Popup */
   .popup-chevron-bar{
@@ -359,8 +359,8 @@
     transition: all .15s ease;
   }
   .popup-tray-item:hover{
-    background: #f0fdf4;
-    border-color: #86efac;
+    background: #eff6ff;
+    border-color: #93c5fd;
     transform: translateY(-1px);
   }
   .popup-tray-item-head{
@@ -374,13 +374,13 @@
     margin-left: auto;
     font-size: 10.5px;
     font-weight: 800;
-    color: #15803d;
+    color: #1d4ed8;
   }
   .popup-tray-sector{ font-size: 10.5px; color: #64748b; line-height: 1.25; }
-  .popup-tray-tel{ font-size: 10.5px; font-weight: 700; color: #166534; margin-top: 2px; }
+  .popup-tray-tel{ font-size: 10.5px; font-weight: 700; color: #1e40af; margin-top: 2px; }
 
   /* Etiquetas Generales */
-  .etq-cuad .caja{ background:rgba(20,99,20,.94); color:#fff; border:2px solid #fff; border-radius:10px; padding:3px 8px;
+  .etq-cuad .caja{ background:rgba(29,78,216,.94); color:#fff; border:2px solid #fff; border-radius:10px; padding:3px 8px;
     text-align:center; line-height:1.15; box-shadow:0 2px 6px rgba(0,0,0,.35); white-space:nowrap; font-family:'Segoe UI',sans-serif; }
   .etq-cuad .num{ font-weight:800; font-size:13px; }
   .etq-cuad .tel{ font-size:10.5px; font-weight:600; opacity:.95; }
@@ -409,7 +409,7 @@
   .etq-cuad.etq-vicuna .tel{ color:#fff; font-size:10.5px; font-weight:700; }
   .etq-cuad.etq-vicuna-rural .caja{ background:rgba(15,75,15,.95); border:2px solid #86efac; }
   .vicuna-tel-link{ display:inline-block; margin-top:6px; padding:8px 14px; background:#dcfce7;
-    border:1px solid #86efac; border-radius:9px; font-size:14px; font-weight:800; color:#166534; text-decoration:none; transition:background .15s; }
+    border:1px solid #93c5fd; border-radius:9px; font-size:14px; font-weight:800; color:#1e40af; text-decoration:none; transition:background .15s; }
   .vicuna-tel-link:hover{ background:#bbf7d0; text-decoration:underline; }
 
   /* Paihuano - Tema Azul / Cyan Valle Alto */
@@ -430,7 +430,7 @@
     border:1px solid #fdba74; border-radius:9px; font-size:14px; font-weight:800; color:#9a3412; text-decoration:none; transition:background .15s; }
   .andacollo-tel-link:hover{ background:#fed7aa; text-decoration:underline; }
 
-  .banner-bosquejo{ position:absolute; z-index:20; right:10px; top:10px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;
+  .banner-bosquejo{ position:absolute; z-index:20; right:10px; top:10px; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe;
     border-radius:10px; padding:8px 12px; font-size:12px; font-weight:600; max-width:320px; box-shadow:0 4px 14px rgba(0,0,0,.15); }
 
   /* ===== Responsive Celulares Medianos y Pequeños ===== */
@@ -733,7 +733,7 @@ function dibujar(cd){
                       '<div class="popup-unidad">🏛️ ' + com + '</div>' +
                       telLink(tel) +
                       (mapaImgSerena ? '<br><a href="' + mapaImgSerena + '" target="_blank" class="doc-link" style="color:#b91c1c;">🗺️ Ver Lámina Oficial Carabineros</a>' : '') +
-                      '<br><a href="' + comisariaUrl + '" target="_blank" class="doc-link" style="color:#047857;margin-top:3px;">' + comisariaTxt + '</a>';
+                      '<br><a href="' + comisariaUrl + '" target="_blank" class="doc-link" style="color:#1d4ed8;margin-top:3px;">' + comisariaTxt + '</a>';
 
       poly.bindPopup(popupHtml);
 
@@ -2206,13 +2206,13 @@ function comenzarArrastre(){
 // Etiqueta de precisión del resultado (Google no la muestra; aquí sí).
 function etiquetaPrecision(alt){
   var p = alt.precision, c = alt.calidad;
-  if (p === 'corregida') return ['✅ Corregida por ti', '#15803d'];
-  if (p === 'equipo') return ['✅ Corregida en terreno (equipo)', '#15803d'];
-  if (c === 3) return ['✅ Verificada en terreno', '#15803d'];
+  if (p === 'corregida') return ['✅ Corregida por ti', '#1d4ed8'];
+  if (p === 'equipo') return ['✅ Corregida en terreno (equipo)', '#1d4ed8'];
+  if (c === 3) return ['✅ Verificada en terreno', '#1d4ed8'];
   if (p === 'esquina') return ['✚ Esquina exacta', '#1d4ed8'];
   if (p === 'lugar') return ['🏢 Lugar encontrado', '#1d4ed8'];
-  if (p === 'osm') return ['🎯 Registrado OpenStreetMap', '#15803d'];
-  if (c === 2) return ['🎯 Dirección exacta', '#15803d'];
+  if (p === 'osm') return ['🎯 Registrado OpenStreetMap', '#1d4ed8'];
+  if (c === 2) return ['🎯 Dirección exacta', '#1d4ed8'];
   if (p === 'anclas') return ['📏 Estimada con números reales de la calle', '#b45309'];
   if (c === 1) return ['📏 Interpolada en la cuadra', '#b45309'];
   if (c === 0) return ['≈ Aproximada', '#b91c1c'];
@@ -2368,7 +2368,7 @@ function buildPopupHtml(alt, activeIdx, keepTrayOpen){
 
   html += '<div class="popup-corregir">' +
     (alt.precision === 'corregida' && window.estadoCorreccion === 'compartida' ?
-      '<div class="popup-nota" style="color:#15803d;font-weight:700;">✅ Guardada para todo el equipo</div>' : '') +
+      '<div class="popup-nota" style="color:#1d4ed8;font-weight:700;">✅ Guardada para todo el equipo</div>' : '') +
     '<a href="javascript:void(0)" class="popup-corr-link" onclick="window.iniciarCorreccion(event)">✏️ ¿No es aquí? Corregir ubicación (con contraseña)</a>' +
   '</div>';
 
@@ -3001,7 +3001,7 @@ function buscar(){
           '</div>' +
           '<div class="res-body">' +
             '<p style="margin:4px 0 8px 0;">No se encontró el cuadrante "' + escapeHtml(q) + '" en ' + ciudadTxt + ', pero está disponible en <b>' + mo.txt + '</b>.</p>' +
-            '<button type="button" class="btn-buscar-alt" onclick="cambiarComunaYBuscar(\'' + primeraOtra.comuna + '\', \'' + escapeHtml(q) + '\')" style="padding:7px 12px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;font-weight:700;color:#166534;cursor:pointer;">👉 Ver ' + (/^\d+$/.test(primeraOtra.cuad.n)?'Cuadrante N° ':'') + primeraOtra.cuad.n + ' en ' + mo.txt + '</button>' +
+            '<button type="button" class="btn-buscar-alt" onclick="cambiarComunaYBuscar(\'' + primeraOtra.comuna + '\', \'' + escapeHtml(q) + '\')" style="padding:7px 12px;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:8px;font-weight:700;color:#1e40af;cursor:pointer;">👉 Ver ' + (/^\d+$/.test(primeraOtra.cuad.n)?'Cuadrante N° ':'') + primeraOtra.cuad.n + ' en ' + mo.txt + '</button>' +
           '</div></div>';
         res(html);
       } else {
