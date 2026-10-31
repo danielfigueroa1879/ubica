@@ -425,14 +425,6 @@
 
   /* ===== Responsive Celulares Medianos y Pequeños ===== */
   @media (max-width:640px){
-    #mapa-topbar{ padding:8px 10px 10px; gap:6px; justify-content:center; }
-    #mapa-topbar .titulo{ font-size:14px; width:100%; margin-right:0; margin-bottom:1px; justify-content:center; text-align:center; }
-    /* Buscador grande y centrado: el input ocupa su propia fila completa; comuna y botón debajo */
-    #mapa-topbar .topbar-row{ width:100%; gap:6px; display:flex; align-items:center; flex-wrap:wrap; justify-content:center; }
-    .search-box-wrap{ order:-1; flex:1 1 100%; min-width:0; max-width:none; }
-    #mapa-topbar input{ padding:12px 14px; font-size:16px; width:100%; min-width:0; border-radius:12px; }
-    #mapa-topbar select{ padding:9px 8px; font-size:14px; max-width:none; flex:1 1 0; min-width:0; }
-    #buscar-btn{ padding:9px 12px; font-size:14px; flex:1 1 0; }
     .banner-bosquejo{ max-width:55vw; font-size:10px; padding:4px 7px; top:6px; right:6px; }
     #resultado{
       left:8px; right:8px; bottom:10px; transform:none;
@@ -443,11 +435,6 @@
     .res-alt-list{ max-height:28vh; }
   }
   @media (max-width:360px){
-    #mapa-topbar{ padding:4px 6px; }
-    #mapa-topbar .titulo{ font-size:12px; }
-    #mapa-topbar select{ font-size:13px; padding:8px 5px; }
-    #mapa-topbar input{ font-size:16px; padding:11px 10px; }
-    #buscar-btn{ padding:8px 7px; font-size:13px; }
     #resultado{ left:5px; right:5px; bottom:6px; padding:7px 8px; font-size:11px; }
     .res-cuad-headline{ font-size:11.5px; }
     .res-chevron-bar{ padding:4px 6px; font-size:10.5px; }
@@ -465,9 +452,7 @@
 
   /* ===== Celulares: zonas seguras (notch / barra inferior) y paneles que no se salgan de la pantalla ===== */
   @media (max-width:640px){
-    #mapa-topbar{ padding-top:max(8px, env(safe-area-inset-top)); padding-left:max(10px, env(safe-area-inset-left)); padding-right:max(10px, env(safe-area-inset-right)); }
     #resultado{ bottom:calc(10px + env(safe-area-inset-bottom)); max-height:55vh; overflow-y:auto; }
-    .q-autocomplete-dropdown{ max-height:min(380px, 55vh); }
     .leaflet-popup-content{ max-width:none; font-size:13px; }
     .popup-dir-name{ font-size:13px; }
     .popup-cuad-title{ font-size:14px; }
@@ -479,14 +464,6 @@
 
   /* ===== Celulares en horizontal (poca altura): barra compacta en una sola fila ===== */
   @media (max-height:500px) and (orientation:landscape){
-    #mapa-topbar{ padding:5px 12px; flex-wrap:nowrap; }
-    #mapa-topbar .titulo{ width:auto; font-size:14px; margin:0; flex:0 0 auto; }
-    #mapa-topbar .topbar-row{ flex:1 1 auto; flex-wrap:nowrap; width:auto; }
-    .search-box-wrap{ order:0; flex:1 1 auto; max-width:none; }
-    #mapa-topbar input{ padding:7px 12px; font-size:16px; }
-    #mapa-topbar select, #buscar-btn{ padding:7px 10px; font-size:13px; flex:0 0 auto; }
-    #mapa-topbar select{ max-width:130px; }
-    .q-autocomplete-dropdown{ max-height:60vh; }
     #resultado{ max-height:60vh; overflow-y:auto; max-width:420px; }
     .popup-tray-list, .res-alt-list{ max-height:28vh; }
     .leaflet-popup-content{ margin:7px 11px !important; font-size:12px; }
@@ -511,13 +488,72 @@
     #mapa-topbar .topbar-row{ flex: 0 1 700px; margin: 0 auto; justify-content: center; }
     .search-box-wrap{ flex: 1 1 360px; max-width: 480px; }
   }
+
+  /* Elementos solo para el modo celular (ocultos en tablet/escritorio) */
+  .m-only{ display:none; }
+  #search-backdrop{ display:none; }
+
+  /* ===== MODO CELULAR: barra compacta + buscador que se abre al frente con fondo borroso ===== */
+  @media (max-width:640px), (pointer:coarse) and (max-height:500px){
+    #mapa-topbar{ flex-wrap:nowrap; justify-content:flex-start; gap:8px;
+      padding:max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); }
+    #mapa-topbar .titulo{ width:auto; margin:0 auto 0 0; font-size:16px; min-width:0; justify-content:flex-start; white-space:nowrap; }
+    .m-only{ display:inline-flex; }
+    #m-comuna-chip{ align-items:center; gap:5px; max-width:42vw; padding:7px 11px; border-radius:999px;
+      background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.4); color:#fff;
+      font-weight:700; font-size:12.5px; line-height:1; font-family:inherit; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #m-comuna-chip .chev{ opacity:.8; font-size:9px; }
+    #m-lupa{ align-items:center; justify-content:center; width:38px; height:38px; flex:0 0 auto; border-radius:50%;
+      background:#ffd24a; color:#4a3200; border:none; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.25); }
+
+    /* Panel de búsqueda: oculto hasta tocar la lupa */
+    #mapa-topbar .topbar-row{ display:none; }
+    body.search-open #mapa-topbar .topbar-row{
+      display:grid; position:fixed; top:0; left:0; right:0; z-index:2600;
+      grid-template-columns:auto 1fr auto; grid-template-areas:"cerrar sel btn" "q q q";
+      gap:10px; align-items:center; margin:0; width:auto;
+      padding:max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 14px max(12px, env(safe-area-inset-left));
+      background:linear-gradient(135deg,var(--verde),var(--verde2));
+      border-radius:0 0 20px 20px; box-shadow:0 14px 34px rgba(0,0,0,.35);
+      animation:panelBajar .2s ease-out;
+    }
+    @keyframes panelBajar{ from{ transform:translateY(-14px); opacity:0; } to{ transform:none; opacity:1; } }
+    #m-cerrar{ grid-area:cerrar; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%;
+      border:none; background:rgba(255,255,255,.15); color:#fff; cursor:pointer; }
+    body.search-open #mapa-topbar select{ grid-area:sel; width:100%; max-width:none; padding:10px 12px; font-size:15px; border-radius:11px; }
+    body.search-open #buscar-btn{ grid-area:btn; padding:10px 16px; font-size:15px; border-radius:11px; }
+    body.search-open .search-box-wrap{ grid-area:q; min-width:0; max-width:none; width:100%; }
+    body.search-open #mapa-topbar input{ font-size:18px; padding:15px 16px; border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,.18); }
+    body.search-open #mapa-topbar input:focus{ box-shadow:0 0 0 3px #ffd24a; }
+    body.search-open .q-autocomplete-dropdown{ top:calc(100% + 12px); max-height:calc(100dvh - 190px); border-radius:14px; }
+    body.search-open .q-ac-cuad{ font-size:15px; }
+    body.search-open .q-ac-road{ font-size:13.5px; }
+    body.search-open .q-ac-tel{ font-size:13px; }
+
+    /* Fondo borroso detrás del buscador */
+    body.search-open #search-backdrop{ display:block; position:fixed; inset:0; z-index:2400;
+      background:rgba(15,23,42,.38); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);
+      animation:fadeIn .2s ease-out; }
+    @keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
+  }
+  @media (pointer:coarse) and (max-height:500px){
+    body.search-open .q-autocomplete-dropdown{ max-height:calc(100dvh - 150px); }
+    body.search-open #mapa-topbar input{ padding:11px 14px; }
+  }
 </style>
 </head>
 <body>
   <div id="mapa-modal">
     <div id="mapa-topbar">
       <span class="titulo"><img class="logo" src="assets/icons/logo.png" alt="" width="26" height="26">Cuadrantes</span>
+      <button id="m-comuna-chip" class="m-only" type="button" aria-label="Cambiar comuna"><span id="m-comuna-txt">La Serena</span><span class="chev">▼</span></button>
+      <button id="m-lupa" class="m-only" type="button" aria-label="Buscar dirección">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      </button>
       <div class="topbar-row">
+        <button id="m-cerrar" class="m-only" type="button" aria-label="Cerrar buscador">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
         <select id="ciudad" aria-label="Seleccione Comuna">
           <option value="coquimbo">Coquimbo</option>
           <option value="serena" selected>La Serena</option>
@@ -537,6 +573,7 @@
       <div class="banner-bosquejo" id="nota"></div>
       <div id="resultado"></div>
     </div>
+    <div id="search-backdrop"></div>
   </div>
 
 <!-- Datos GeoJSON de cuadrantes/unidades: archivo compartido (fuente única, también usado por el buscador de index.html) -->
@@ -624,6 +661,7 @@ function polygonCentroid(pts){
 
 function dibujar(cd){
   ciudad=cd;
+  if (window.actualizarChipComuna) window.actualizarChipComuna();
   if(capa) map.removeLayer(capa);
   capa=L.layerGroup().addTo(map);
   items=[];
@@ -2403,6 +2441,7 @@ function seleccionarAlternativa(idx, ev, keepTrayOpen){
   if (acBox) { acBox.style.display = 'none'; acBox.innerHTML = ''; }
   var qInput = document.getElementById('q');
   if (qInput) qInput.blur();
+  if (window.cerrarBuscadorMovil) window.cerrarBuscadorMovil();
 }
 window.seleccionarAlternativa = seleccionarAlternativa;
 
@@ -2872,6 +2911,7 @@ function mostrarNoEncontrado(q, ciudadOrig, osmHit){
 function buscar(){
   var q = (document.getElementById('q').value || '').trim();
   if (!q) return;
+  if (window.cerrarBuscadorMovil) window.cerrarBuscadorMovil();
   notaBusqueda = null;
   busquedaActual = { orig: q, iaUsada: false };
 
@@ -3281,6 +3321,37 @@ setTimeout(function(){ map.invalidateSize(); },80);
   <button type="button" class="cerrar" aria-label="Cerrar">×</button>
 </div>
 <script>
+// ===== Buscador en celular: se abre al frente con la lupa, fondo borroso =====
+(function(){
+  var MQ = window.matchMedia('(max-width:640px), (pointer:coarse) and (max-height:500px)');
+  var q = document.getElementById('q');
+  var sel = document.getElementById('ciudad');
+  var chipTxt = document.getElementById('m-comuna-txt');
+  function abrir(focoComuna){
+    if (!MQ.matches) return;
+    document.body.classList.add('search-open');
+    if (focoComuna) sel.focus(); else { q.focus(); q.select(); }
+  }
+  function cerrar(){
+    if (!document.body.classList.contains('search-open')) return;
+    document.body.classList.remove('search-open');
+    var ac = document.getElementById('q-autocomplete');
+    if (ac) ac.style.display = 'none';
+    q.blur();
+  }
+  window.cerrarBuscadorMovil = cerrar;
+  function actualizarChip(){ chipTxt.textContent = sel.options[sel.selectedIndex].text; }
+  window.actualizarChipComuna = actualizarChip;
+  actualizarChip();
+  sel.addEventListener('change', actualizarChip);
+  document.getElementById('m-lupa').addEventListener('click', function(){ abrir(false); });
+  document.getElementById('m-comuna-chip').addEventListener('click', function(){ abrir(true); });
+  document.getElementById('m-cerrar').addEventListener('click', cerrar);
+  document.getElementById('search-backdrop').addEventListener('click', cerrar);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') cerrar(); });
+  if (MQ.addEventListener) MQ.addEventListener('change', function(){ if (!MQ.matches) cerrar(); });
+})();
+
 // ===== App instalable (PWA) =====
 (function(){
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
