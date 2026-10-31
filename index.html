@@ -44,6 +44,16 @@
   #mapa-topbar select{ flex:0 0 auto; font-weight:700; color:#144a14; background:#f0fdf4; cursor:pointer; }
   .search-box-wrap{ position:relative; flex:1 1 auto; min-width:210px; max-width:390px; }
   #mapa-topbar input{ width:100%; min-width:0; max-width:none; }
+  /* Micrófono para dictar dentro del buscador */
+  #q.con-mic{ padding-right:44px !important; }
+  #mic-btn{ position:absolute; right:5px; top:50%; transform:translateY(-50%); width:34px; height:34px; border-radius:50%;
+    border:none; background:transparent; color:#146314; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:background .15s, color .15s; }
+  #mic-btn:hover{ background:#f0fdf4; }
+  #mic-btn[hidden]{ display:none; }
+  #mic-btn.escuchando{ background:#dc2626; color:#fff; animation:micPulso 1.1s ease-in-out infinite; }
+  @keyframes micPulso{ 0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.55); } 50%{ box-shadow:0 0 0 9px rgba(220,38,38,0); } }
+  body.search-open #mic-btn{ width:42px; height:42px; right:6px; }
   #mapa-topbar input:focus{ box-shadow:0 0 0 2px #ffd24a; }
   .q-autocomplete-dropdown{
     position:absolute; top:calc(100% + 6px); left:0; right:0; width:100%; min-width:100%; max-width:none; background:#ffffff;
@@ -563,6 +573,9 @@
         </select>
         <div class="search-box-wrap">
           <input id="q" type="text" placeholder="Dirección o N° cuadrante (ej. Los Cedros, Balmaceda, 1, 5)…" autocomplete="off" />
+          <button id="mic-btn" type="button" aria-label="Dictar con la voz" title="Dictar con la voz" hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+          </button>
           <div id="q-autocomplete" class="q-autocomplete-dropdown"></div>
         </div>
         <button id="buscar-btn">Buscar</button>
@@ -3321,6 +3334,64 @@ setTimeout(function(){ map.invalidateSize(); },80);
   <button type="button" class="cerrar" aria-label="Cerrar">×</button>
 </div>
 <script>
+// ===== Dictado por voz en el buscador =====
+(function(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var btn = document.getElementById('mic-btn');
+  var q = document.getElementById('q');
+  if (!SR || !btn) return; // navegador sin reconocimiento de voz: no se muestra el micrófono
+  btn.hidden = false;
+  q.classList.add('con-mic');
+
+  var rec = new SR();
+  rec.lang = 'es-CL';
+  rec.interimResults = true;
+  rec.continuous = false;
+  rec.maxAlternatives = 1;
+  var escuchando = false, placeholderOrig = q.placeholder, textoFinal = '';
+
+  function estado(on){
+    escuchando = on;
+    btn.classList.toggle('escuchando', on);
+    btn.setAttribute('aria-label', on ? 'Detener dictado' : 'Dictar con la voz');
+    q.placeholder = on ? 'Escuchando… habla ahora' : placeholderOrig;
+  }
+  function avisar(msg){
+    q.value = ''; q.placeholder = msg;
+    setTimeout(function(){ if (!escuchando) q.placeholder = placeholderOrig; }, 3500);
+  }
+
+  btn.addEventListener('click', function(e){
+    e.preventDefault();
+    if (escuchando) { rec.stop(); return; }
+    textoFinal = '';
+    try { rec.start(); estado(true); } catch(err) {}
+  });
+  // Evita que el toque del micrófono cierre la lista de sugerencias o quite el foco
+  btn.addEventListener('mousedown', function(e){ e.preventDefault(); });
+
+  rec.onresult = function(e){
+    var parcial = '';
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      var t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) textoFinal += t; else parcial += t;
+    }
+    q.value = (textoFinal + parcial).replace(/[.。]+$/, '').trim();
+    q.dispatchEvent(new Event('input', { bubbles: true })); // actualiza las sugerencias en vivo
+  };
+  rec.onend = function(){
+    estado(false);
+    var texto = textoFinal.replace(/[.。]+$/, '').trim();
+    if (texto) { q.value = texto; buscar(); }
+  };
+  rec.onerror = function(e){
+    estado(false);
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') avisar('Permite el micrófono para dictar');
+    else if (e.error === 'no-speech') avisar('No se escuchó nada, intenta de nuevo');
+    else if (e.error === 'network') avisar('El dictado necesita conexión a internet');
+  };
+})();
+
 // ===== Buscador en celular: se abre al frente con la lupa, fondo borroso =====
 (function(){
   var MQ = window.matchMedia('(max-width:640px), (pointer:coarse) and (max-height:500px)');
