@@ -266,6 +266,20 @@
     margin-bottom: 3px;
   }
   .popup-cuad-title{ font-size: 13px; font-weight: 800; color: #1e3a8a; }
+  /* Cuadrante encontrado: número grande y destacado */
+  .popup-cuad-destacado{ border:2px solid; border-left-width:2px; background:#fff; padding:9px 10px; margin-right:18px; }
+  .popup-cuad-main{ display:flex; align-items:center; gap:11px; margin-bottom:7px; }
+  .popup-num-badge{ flex:0 0 auto; min-width:64px; height:64px; padding:0 8px; border-radius:14px; color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1;
+    box-shadow:0 4px 12px rgba(0,0,0,.22), inset 0 -3px 0 rgba(0,0,0,.15); }
+  .popup-num-badge .lbl{ font-size:8.5px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; opacity:.92; margin-bottom:3px; }
+  .popup-num-badge .num{ font-size:32px; font-weight:900; color:#ffd24a; text-shadow:0 2px 3px rgba(0,0,0,.35); }
+  .popup-num-badge .num.num-largo{ font-size:21px; }
+  .popup-num-badge.c-coquimbo .num{ color:#fff; }
+  .popup-cuad-info{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:3px; }
+  .popup-cuad-destacado .popup-cuad-top{ margin:0; }
+  .popup-cuad-destacado .popup-cuad-title{ font-size:16px; line-height:1.2; }
+  .popup-cuad-destacado .popup-cuad-sector{ margin:2px 0 0; }
   .popup-cuad-sector{ font-size: 11.5px; color: #374151; margin-bottom: 4px; line-height: 1.3; }
   .popup-cuad-tel-row{ display: flex; align-items: center; gap: 6px; font-size: 11.5px; }
   .popup-tel-lbl{ color: #4b5563; font-weight: 600; font-size: 11px; }
@@ -2305,7 +2319,34 @@ function buildPopupHtml(alt, activeIdx, keepTrayOpen){
   }
 
   var prec = etiquetaPrecision(alt);
-  var html = '<div class="popup-unified-card">' +
+  // Número del cuadrante destacado (o código corto del sector rural, ej. SRA)
+  var mNum = /N°\s*(\S+)/.exec(alt.cuadTxt || '');
+  var numCuad = mNum ? mNum[1] : (alt.cuad && alt.cuad.n && String(alt.cuad.n).length <= 4 ? String(alt.cuad.n) : '');
+  var esRural = !mNum;
+  var cuadBox =
+    '<div class="popup-cuad-box popup-cuad-destacado" style="border-color:' + m2.border + ';">' +
+      '<div class="popup-cuad-main">' +
+        (numCuad ?
+          '<div class="popup-num-badge c-' + alt.comuna + '" style="background:' + m2.border + ';">' +
+            '<span class="lbl">' + (esRural ? 'Sector' : 'Cuadrante') + '</span>' +
+            '<span class="num' + (numCuad.length > 2 ? ' num-largo' : '') + '">' + escapeHtml(numCuad) + '</span>' +
+          '</div>' : '') +
+        '<div class="popup-cuad-info">' +
+          '<div class="popup-cuad-top">' +
+            '<span class="popup-cuad-title" style="color:' + m2.border + ';">' + escapeHtml(alt.cuadTxt) + '</span>' +
+          '</div>' +
+          '<span class="res-alt-badge badge-' + alt.comuna + '">' + m2.txt + '</span>' +
+          '<div class="popup-cuad-sector">Sector: <b>' + escapeHtml((alt.cuad && alt.cuad.sector) || alt.displayRoad || alt.display) + '</b></div>' +
+        '</div>' +
+      '</div>' +
+      (alt.cuad && alt.cuad.tel ?
+        '<div class="popup-cuad-tel-row">' +
+          '<span class="popup-tel-lbl">Patrulla cuadrante:</span>' +
+          '<a href="tel:' + telHref + '" class="popup-tel-btn">📞 ' + escapeHtml(alt.cuad.tel) + '</a>' +
+        '</div>' : '') +
+    '</div>';
+
+  var html = '<div class="popup-unified-card">' + cuadBox +
     '<div class="popup-head-row">' +
       '<span class="popup-dir-icon">📍</span>' +
       '<div class="popup-dir-text">' +
@@ -2314,19 +2355,6 @@ function buildPopupHtml(alt, activeIdx, keepTrayOpen){
         (prec ? '<div class="popup-precision" style="color:' + prec[1] + ';border-color:' + prec[1] + ';">' + prec[0] + '</div>' : '') +
         (notaBusqueda ? '<div class="popup-nota">' + notaBusqueda + '</div>' : '') +
       '</div>' +
-    '</div>' +
-
-    '<div class="popup-cuad-box" style="border-left: 4px solid ' + m2.border + ';">' +
-      '<div class="popup-cuad-top">' +
-        '<span class="popup-cuad-title">👮 <b>' + alt.cuadTxt + '</b></span>' +
-        '<span class="res-alt-badge badge-' + alt.comuna + '">' + m2.txt + '</span>' +
-      '</div>' +
-      '<div class="popup-cuad-sector">Sector: <b>' + escapeHtml((alt.cuad && alt.cuad.sector) || alt.displayRoad || alt.display) + '</b></div>' +
-      (alt.cuad && alt.cuad.tel ?
-        '<div class="popup-cuad-tel-row">' +
-          '<span class="popup-tel-lbl">Patrulla cuadrante:</span>' +
-          '<a href="tel:' + telHref + '" class="popup-tel-btn">📞 ' + escapeHtml(alt.cuad.tel) + '</a>' +
-        '</div>' : '') +
     '</div>';
 
   // Si existen otros cuadrantes o comunas para esta misma dirección:
