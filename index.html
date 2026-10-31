@@ -172,7 +172,7 @@
   .res-alt-badge{ font-size:10px; font-weight:800; text-transform:uppercase; padding:1.5px 6px; border-radius:999px; letter-spacing:0.3px; }
   .badge-serena{ background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
   .badge-coquimbo{ background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
-  .badge-vicuna{ background:#dcfce7; color:#166534; border:1px solid #86efac; }
+  .badge-vicuna{ background:#e3eaf1; color:#34506a; border:1px solid #a7bbcf; }
   .badge-paihuano{ background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; }
   .badge-andacollo{ background:#ffedd5; color:#9a3412; border:1px solid #fdba74; }
   .res-alt-cuad{ font-size:11.5px; color:#111827; }
@@ -403,14 +403,14 @@
   .coquimbo-tel-link:hover{ background:#fef08a; text-decoration:underline; }
 
   /* Vicuña - Tema Verde Carabineros / Esmeralda */
-  .banner-vicuna{ background:#f0fdf4 !important; color:#166534 !important; border:1px solid #bbf7d0 !important; }
-  .etq-cuad.etq-vicuna .caja{ background:rgba(20,99,20,.94); color:#fff; border:2px solid #fff; box-shadow:0 3px 8px rgba(0,0,0,.35); }
+  .banner-vicuna{ background:#f1f5f9 !important; color:#34506a !important; border:1px solid #c9d6e3 !important; }
+  .etq-cuad.etq-vicuna .caja{ background:rgba(63,95,122,.94); color:#fff; border:2px solid #fff; box-shadow:0 3px 8px rgba(0,0,0,.35); }
   .etq-cuad.etq-vicuna .num{ color:#ffd24a; font-weight:900; font-size:14px; text-shadow:0 1px 2px rgba(0,0,0,.45); }
   .etq-cuad.etq-vicuna .tel{ color:#fff; font-size:10.5px; font-weight:700; }
-  .etq-cuad.etq-vicuna-rural .caja{ background:rgba(15,75,15,.95); border:2px solid #86efac; }
-  .vicuna-tel-link{ display:inline-block; margin-top:6px; padding:8px 14px; background:#dcfce7;
+  .etq-cuad.etq-vicuna-rural .caja{ background:rgba(47,74,98,.95); border:2px solid #a7bbcf; }
+  .vicuna-tel-link{ display:inline-block; margin-top:6px; padding:8px 14px; background:#e3eaf1;
     border:1px solid #93c5fd; border-radius:9px; font-size:14px; font-weight:800; color:#1e40af; text-decoration:none; transition:background .15s; }
-  .vicuna-tel-link:hover{ background:#bbf7d0; text-decoration:underline; }
+  .vicuna-tel-link:hover{ background:#c9d6e3; text-decoration:underline; }
 
   /* Paihuano - Tema Azul / Cyan Valle Alto */
   .banner-paihuano{ background:#f0f9ff !important; color:#0369a1 !important; border:1px solid #bae6fd !important; }
@@ -861,8 +861,8 @@ function dibujar(cd){
       var sec=p.SECTOR;
       var mapaImg=p.MAPA_IMG;
 
-      var colorBorder = esUrbano ? '#15803d' : '#047857';
-      var colorFill = esUrbano ? '#22c55e' : '#10b981';
+      var colorBorder = esUrbano ? '#3f5f7a' : '#2f4a62';
+      var colorFill = esUrbano ? '#6b8aa6' : '#7f98ae';
 
       var poly=L.geoJSON(f,{
         style:{
@@ -876,11 +876,11 @@ function dibujar(cd){
       var telClean = tel.replace(/[^\d]/g,'');
       var telHref = (telClean.length===9 ? '+56'+telClean : telClean);
 
-      var popupHtml = '<div class="popup-title" style="color:#166534;">' + (esUrbano ? 'Cuadrante N° ' + cuadN : 'Sector Rural ' + cuadN) + '</div>' +
+      var popupHtml = '<div class="popup-title" style="color:#34506a;">' + (esUrbano ? 'Cuadrante N° ' + cuadN : 'Sector Rural ' + cuadN) + '</div>' +
                       '<div class="popup-sector">📍 ' + sec + '</div>' +
                       '<div class="popup-unidad">🏛️ ' + com + '</div>' +
                       '<a href="tel:' + telHref + '" class="vicuna-tel-link">📞 ' + tel + '</a>' +
-                      (mapaImg ? '<br><a href="' + mapaImg + '" target="_blank" class="doc-link" style="color:#15803d;">🗺️ Ver Lámina Oficial Carabineros</a>' : '');
+                      (mapaImg ? '<br><a href="' + mapaImg + '" target="_blank" class="doc-link" style="color:#3f5f7a;">🗺️ Ver Lámina Oficial Carabineros</a>' : '');
 
       poly.bindPopup(popupHtml);
 
@@ -1070,8 +1070,8 @@ function dibujar(cd){
 function metaComuna(cd){
   return {
     txt:    (cd==='serena' ? 'La Serena' : cd==='vicuna' ? 'Vicuña' : cd==='paihuano' ? 'Paihuano' : cd==='andacollo' ? 'Andacollo' : 'Coquimbo'),
-    border: (cd==='coquimbo' ? '#d97706' : cd==='serena' ? '#dc2626' : cd==='vicuna' ? '#15803d' : cd==='paihuano' ? '#0284c7' : '#c2410c'),
-    cuad:   (cd==='coquimbo' ? '#facc15' : cd==='serena' ? '#dc2626' : cd==='vicuna' ? '#22c55e' : cd==='paihuano' ? '#38bdf8' : '#ea580c')
+    border: (cd==='coquimbo' ? '#d97706' : cd==='serena' ? '#dc2626' : cd==='vicuna' ? '#3f5f7a' : cd==='paihuano' ? '#0284c7' : '#c2410c'),
+    cuad:   (cd==='coquimbo' ? '#facc15' : cd==='serena' ? '#dc2626' : cd==='vicuna' ? '#6b8aa6' : cd==='paihuano' ? '#38bdf8' : '#ea580c')
   };
 }
 
